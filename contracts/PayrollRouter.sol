@@ -77,15 +77,13 @@ contract PayrollRouter {
 
     /**
      * @notice Employer deposits payroll for an employee.
-     *         Auto-deducts outstanding loan obligation (using deduction logic from off-chain via View Keys)
+     *         Auto-deducts outstanding loan obligation directly from the Lending contract
      * @param _employee  The employee's address
-     * @param _deductionAmount The amount to deduct for loan repayment
      * @param _nullifier The nullifier hash for the repayment ZK proof
      * @param _proof The ZK proof for repayment
      */
     function depositPayroll(
         address _employee,
-        uint256 _deductionAmount,
         bytes32 _nullifier,
         bytes calldata _proof
     ) external payable {
@@ -98,16 +96,20 @@ contract PayrollRouter {
         uint256 deduction = 0;
         uint256 forwarded = msg.value;
 
-        if (_deductionAmount > 0 && msg.value > 0) {
-            deduction = _deductionAmount > msg.value
-                ? msg.value
-                : _deductionAmount;
+        // Automatically fetch the outstanding obligation directly from EWALending
+        EWALending lending = EWALending(payable(record.lendingContract));
+        uint256 owed = lending.outstandingObligations(_employee);
+
+        if (owed > 0 && msg.value > 0) {
+            deduction = owed > msg.value ? msg.value : owed;
             forwarded = msg.value - deduction;
 
             // Send deduction to lending contract privately
-            EWALending(payable(record.lendingContract)).repayConfidential{
-                value: deduction
-            }(_nullifier, _proof);
+            lending.repayConfidential{value: deduction}(
+                _employee,
+                _nullifier,
+                _proof
+            );
         }
 
         // Forward remainder to employee (in true ZK, this would be shielded)

@@ -20,6 +20,7 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
     const [step, setStep] = useState(state.connected ? (walletExists ? 3 : 2) : 1);
     const [loading, setLoading] = useState(false);
     const [attestationStatus, setAttestationStatus] = useState('');
+    const [pastedCode, setPastedCode] = useState('');
     const [txHash, setTxHash] = useState<string | null>(null);
 
     const handleCreateUnlinkWallet = async () => {
@@ -82,8 +83,19 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
                 return;
             }
 
-            // Check if there is a pending attestation from the Admin Panel
-            const stored = localStorage.getItem(`ewa_pending_attestation_${address}`);
+            // 1. Try pasted base64 code first
+            // 2. Fall back to localStorage (only works if running on same port)
+            let stored = '';
+            if (pastedCode) {
+                try {
+                    stored = atob(pastedCode);
+                } catch {
+                    throw new Error('Invalid Attestation Code format.');
+                }
+            } else {
+                stored = localStorage.getItem(`ewa_pending_attestation_${address}`) || '';
+            }
+
             let signature = '0x' + '00'.repeat(65);
             let attestationHash = ethers.ZeroHash;
             let employerHash = ethers.ZeroHash;
@@ -137,8 +149,8 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
             ) {
                 setAttestationStatus(
                     `⚠️ Attestation not yet issued for your wallet.\n\n` +
-                    `Please ask your employer to issue one from the /admin panel.\n\n` +
-                    `(If testing, use another metamask account to go to /admin and issue an attestation for this address: ${address})`
+                    `Please ask your employer to issue one from the Admin App and paste the code above.\n\n` +
+                    `(If testing, go to http://localhost:5174 and issue an attestation for this address: ${address})`
                 );
             } else {
                 setAttestationStatus('❌ Error: ' + (err.reason || err.message));
@@ -306,9 +318,19 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
                             </div>
                         </div>
 
-                        <div className="alert alert-info">
-                            ℹ️ In production, this connects to <strong>Plaid / Argyle</strong> to verify your payroll.
-                            For the hackathon, please use the <strong>/admin</strong> panel to map your employer's signature to this wallet.
+                        <div className="alert alert-info" style={{ marginBottom: 16 }}>
+                            ℹ️ For the hackathon demo, you must create an attestation in the <strong>Admin App</strong> and paste the generated Attestation Code below.
+                        </div>
+
+                        <div className="form-group" style={{ marginBottom: 24, textAlign: 'left' }}>
+                            <label className="form-label" style={{ fontWeight: 600 }}>Attestation Code</label>
+                            <input
+                                className="form-input"
+                                placeholder="Paste the code from the Admin Panel here..."
+                                value={pastedCode}
+                                onChange={e => setPastedCode(e.target.value)}
+                                style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}
+                            />
                         </div>
 
                         {attestationStatus && (

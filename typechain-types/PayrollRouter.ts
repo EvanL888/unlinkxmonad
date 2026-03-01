@@ -45,7 +45,7 @@ export interface PayrollRouterInterface extends Interface {
 
   encodeFunctionData(
     functionFragment: "depositPayroll",
-    values: [AddressLike, BigNumberish, BytesLike, BytesLike]
+    values: [AddressLike, BytesLike, BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "employees",
@@ -199,12 +199,7 @@ export interface PayrollRouter extends BaseContract {
   ): Promise<this>;
 
   depositPayroll: TypedContractMethod<
-    [
-      _employee: AddressLike,
-      _deductionAmount: BigNumberish,
-      _nullifier: BytesLike,
-      _proof: BytesLike
-    ],
+    [_employee: AddressLike, _nullifier: BytesLike, _proof: BytesLike],
     [void],
     "payable"
   >;
@@ -261,12 +256,7 @@ export interface PayrollRouter extends BaseContract {
   getFunction(
     nameOrSignature: "depositPayroll"
   ): TypedContractMethod<
-    [
-      _employee: AddressLike,
-      _deductionAmount: BigNumberish,
-      _nullifier: BytesLike,
-      _proof: BytesLike
-    ],
+    [_employee: AddressLike, _nullifier: BytesLike, _proof: BytesLike],
     [void],
     "payable"
   >;

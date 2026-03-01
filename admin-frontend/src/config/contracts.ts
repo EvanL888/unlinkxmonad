@@ -5,18 +5,18 @@
 
 // After deploying, paste the addresses from deployed-addresses.json here
 export const CONTRACTS = {
-    attestationRegistry: '0xA29bB151B4BFD9C9f45F3Cf121670e1D17a3e9A7',
-    reputationTracker: '0xf99F6E0E08cd5A0Ad00DAE385DA0BfC00e802FC1',
-    ewaLending: '0x90DA606F934aAa7db7c08feC128f02f8888Df223',
-    payrollRouter: '0xf670DBDDB899c633310eD6576f238f8DA8b63F11',
+    attestationRegistry: '0xdab7aa8F75F6Df707eA7E2f9176D389a0E76cF3a',
+    reputationTracker: '0x61Aa97a972F3c36D99BdCC3458f4AfF97FfAdC47',
+    ewaLending: '0xc594e8A50ecE126EACC4975E95D5771D43b4BBA3',
+    payrollRouter: '0x2aB089dbe4bc34ef89CfF748DB44350D3561040B',
 };
 
 export const MONAD_CHAIN_ID = 10143;
 export const MONAD_RPC = 'https://testnet-rpc.monad.xyz';
 
 export const EWA_LENDING_ABI = [
-    'function borrowConfidential(uint256 _amount, bytes32 _commitmentHash, bytes calldata _encryptedData) external',
-    'function repayConfidential(bytes32 _nullifierHash, bytes calldata _proof) external payable',
+    'function borrowConfidential(uint256 _amount, uint256 _totalOwed, bytes32 _commitmentHash, bytes calldata _encryptedData) external',
+    'function repayConfidential(address _borrower, bytes32 _nullifierHash, bytes calldata _proof) external payable',
     'function maxLoanAmount() external view returns (uint256)',
     'function totalLiquidity() external view returns (uint256)',
     'event ConfidentialLoanCreated(bytes32 indexed commitmentHash, bytes encryptedLoanData)',
@@ -36,7 +36,7 @@ export const REPUTATION_TRACKER_ABI = [
 
 export const PAYROLL_ROUTER_ABI = [
     'function registerEmployee(address _employee, address _lendingContract) external',
-    'function depositPayroll(address _employee, uint256 _deductionAmount, bytes32 _nullifier, bytes calldata _proof) external payable',
+    'function depositPayroll(address _employee, bytes32 _nullifier, bytes calldata _proof) external payable',
     'function setNextPayday(address _employee, uint256 _timestamp) external',
     'function getNextPayday(address employee) external view returns (uint256)',
     'function isRegistered(address employee) external view returns (bool)',

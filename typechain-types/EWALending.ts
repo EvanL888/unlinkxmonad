@@ -31,6 +31,7 @@ export interface EWALendingInterface extends Interface {
       | "borrowConfidential"
       | "depositLiquidity"
       | "maxLoanAmount"
+      | "outstandingObligations"
       | "owner"
       | "repayConfidential"
       | "reputationTracker"
@@ -56,7 +57,7 @@ export interface EWALendingInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "borrowConfidential",
-    values: [BigNumberish, BytesLike, BytesLike]
+    values: [BigNumberish, BigNumberish, BytesLike, BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "depositLiquidity",
@@ -66,10 +67,14 @@ export interface EWALendingInterface extends Interface {
     functionFragment: "maxLoanAmount",
     values?: undefined
   ): string;
+  encodeFunctionData(
+    functionFragment: "outstandingObligations",
+    values: [AddressLike]
+  ): string;
   encodeFunctionData(functionFragment: "owner", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "repayConfidential",
-    values: [BytesLike, BytesLike]
+    values: [AddressLike, BytesLike, BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "reputationTracker",
@@ -106,6 +111,10 @@ export interface EWALendingInterface extends Interface {
   ): Result;
   decodeFunctionResult(
     functionFragment: "maxLoanAmount",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "outstandingObligations",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
@@ -222,6 +231,7 @@ export interface EWALending extends BaseContract {
   borrowConfidential: TypedContractMethod<
     [
       _amount: BigNumberish,
+      _totalOwed: BigNumberish,
       _commitmentHash: BytesLike,
       _encryptedData: BytesLike
     ],
@@ -233,10 +243,16 @@ export interface EWALending extends BaseContract {
 
   maxLoanAmount: TypedContractMethod<[], [bigint], "view">;
 
+  outstandingObligations: TypedContractMethod<
+    [arg0: AddressLike],
+    [bigint],
+    "view"
+  >;
+
   owner: TypedContractMethod<[], [string], "view">;
 
   repayConfidential: TypedContractMethod<
-    [_nullifierHash: BytesLike, _proof: BytesLike],
+    [_borrower: AddressLike, _nullifierHash: BytesLike, _proof: BytesLike],
     [void],
     "payable"
   >;
@@ -268,6 +284,7 @@ export interface EWALending extends BaseContract {
   ): TypedContractMethod<
     [
       _amount: BigNumberish,
+      _totalOwed: BigNumberish,
       _commitmentHash: BytesLike,
       _encryptedData: BytesLike
     ],
@@ -281,12 +298,15 @@ export interface EWALending extends BaseContract {
     nameOrSignature: "maxLoanAmount"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
+    nameOrSignature: "outstandingObligations"
+  ): TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
+  getFunction(
     nameOrSignature: "owner"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
     nameOrSignature: "repayConfidential"
   ): TypedContractMethod<
-    [_nullifierHash: BytesLike, _proof: BytesLike],
+    [_borrower: AddressLike, _nullifierHash: BytesLike, _proof: BytesLike],
     [void],
     "payable"
   >;

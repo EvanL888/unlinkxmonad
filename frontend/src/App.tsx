@@ -10,6 +10,7 @@ import {
     EWA_LENDING_ABI,
     ATTESTATION_REGISTRY_ABI,
     REPUTATION_TRACKER_ABI,
+    PAYROLL_ROUTER_ABI
 } from './config/contracts';
 
 type Tab = 'onboarding' | 'dashboard' | 'borrow' | 'repay';
@@ -118,6 +119,52 @@ function App() {
                         totalRepaid: BigInt(l.totalRepaid || '0'),
                         collateral: BigInt(l.collateral || '0')
                     });
+
+                    // -- START PAYROLL SYNC BLOCK --
+                    // Fetch total historical payroll deductions from chain
+                    let totalDeductionsOnChain = 0n;
+                    try {
+                        const router = new ethers.Contract(CONTRACTS.payrollRouter, PAYROLL_ROUTER_ABI, state.provider);
+                        const filter = router.filters.PayrollProcessed(state.address);
+                        const blockNum = await state.provider.getBlockNumber();
+                        const fromBlock = Math.max(0, blockNum - 100000);
+                        const logs = await router.queryFilter(filter, fromBlock, 'latest');
+                        for (const log of logs as any[]) {
+                            if (log.args && log.args.deducted) {
+                                totalDeductionsOnChain += BigInt(log.args.deducted);
+                            }
+                        }
+                    } catch (e) { console.error('Failed to sync payroll events:', e); }
+
+                    // Apply any new deductions
+                    const storedSync = localStorage.getItem(`ewa_payroll_sync_${state.address}`);
+                    const previouslySynced = storedSync ? BigInt(storedSync) : 0n;
+
+                    let newDeductions = previouslySynced < totalDeductionsOnChain
+                        ? (totalDeductionsOnChain - previouslySynced)
+                        : 0n;
+
+                    if (newDeductions > 0n) {
+                        for (const l of parsed) {
+                            if (l.status === 0 && newDeductions > 0n) {
+                                const remainingOwed = BigInt(l.totalOwed || '0') - BigInt(l.totalRepaid || '0');
+                                if (remainingOwed > 0n) {
+                                    const applied = newDeductions > remainingOwed ? remainingOwed : newDeductions;
+                                    l.totalRepaid = (BigInt(l.totalRepaid || '0') + applied).toString();
+                                    newDeductions -= applied;
+
+                                    if (BigInt(l.totalRepaid) >= BigInt(l.totalOwed)) {
+                                        l.status = 1; // Repaid
+                                    }
+                                }
+                            }
+                        }
+                        // Save updated loans back to local storage
+                        localStorage.setItem(`ewa_confidential_loans_${state.address}`, JSON.stringify(parsed));
+                        localStorage.setItem(`ewa_payroll_sync_${state.address}`, totalDeductionsOnChain.toString());
+                    }
+                    // -- END PAYROLL SYNC BLOCK --
+
                     activeLoans = parsed.filter((l: any) => l.status === 0).map(mapLoan);
                     allLoans = parsed.map(mapLoan);
 

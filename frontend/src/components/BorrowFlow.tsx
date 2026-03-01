@@ -76,6 +76,7 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
             // 3. Call the smart contract borrow function (Private Pool Deposit Mock)
             const tx = await lending.borrowConfidential(
                 amountWei,
+                ethers.parseEther(totalOwed.toFixed(18)),
                 commitmentHash,
                 encryptedData
             );

@@ -18,8 +18,9 @@ export default function AdminPanel({ state }: Props) {
     const [employeeAddr, setEmployeeAddr] = useState('');
     const [companyName, setCompanyName] = useState('Acme Corp');
 
-    // ─── Attestation ─────────────────────────────────────────────────
+    // ─── Attestation ──────────   ───────────────────────────────────────
     const [attestBorrower, setAttestBorrower] = useState('');
+    const [attestationCode, setAttestationCode] = useState('');
 
     // ─── Payroll ─────────────────────────────────────────────────────
     const [payrollEmployee, setPayrollEmployee] = useState('');
@@ -60,19 +61,9 @@ export default function AdminPanel({ state }: Props) {
 
         // Calculate outstanding obligation from local loan data
         try {
-            const storedLoans = localStorage.getItem(`ewa_confidential_loans_${payrollEmployee}`);
-            if (storedLoans) {
-                const loans = JSON.parse(storedLoans);
-                let total = 0n;
-                for (const l of loans) {
-                    if (l.status === 0) {
-                        total += BigInt(l.totalOwed || '0') - BigInt(l.totalRepaid || '0');
-                    }
-                }
-                setOutstandingObligation(total);
-            } else {
-                setOutstandingObligation(0n);
-            }
+            const lending = new ethers.Contract(CONTRACTS.ewaLending, EWA_LENDING_ABI, state.provider);
+            const owedPublic = await lending.outstandingObligations(payrollEmployee);
+            setOutstandingObligation(owedPublic);
         } catch {
             setOutstandingObligation(0n);
         }
@@ -106,17 +97,17 @@ export default function AdminPanel({ state }: Props) {
 
             const balance = await state.provider!.getBalance(state.address);
 
-            // Lowered gas sponsorship to 0.005 MON for testnet faucet compatibility
-            if (balance >= ethers.parseEther('0.005')) {
-                setStatus('⏳ Sponsoring gas for employee (0.005 MON)...');
+            // Increased gas sponsorship to 1.0 MON for full testing
+            if (balance >= ethers.parseEther('1.0')) {
+                setStatus('⏳ Sponsoring initial funds for employee (1.0 MON)...');
                 const gasTx = await state.signer.sendTransaction({
                     to: employeeAddr,
-                    value: ethers.parseEther('0.005')
+                    value: ethers.parseEther('1.0')
                 });
                 await gasTx.wait();
-                setStatus(`✅ Employee ${employeeAddr.slice(0, 6)}...${employeeAddr.slice(-4)} registered and sponsored with 0.005 MON for gas!`);
+                setStatus(`✅ Employee ${employeeAddr.slice(0, 6)}...${employeeAddr.slice(-4)} registered and sponsored with 1.0 MON!`);
             } else {
-                setStatus(`✅ Employee ${employeeAddr.slice(0, 6)}...${employeeAddr.slice(-4)} registered! (Skipped gas sponsor due to low balance)`);
+                setStatus(`✅ Employee ${employeeAddr.slice(0, 6)}...${employeeAddr.slice(-4)} registered! (Skipped initial funding due to low balance)`);
             }
             setTxHash(tx.hash);
         } catch (err: any) {
@@ -131,6 +122,7 @@ export default function AdminPanel({ state }: Props) {
         if (!state.signer || !attestBorrower) return;
         setLoading('attest');
         setStatus('');
+        setAttestationCode('');
         try {
             const employerHash = ethers.keccak256(ethers.toUtf8Bytes(companyName));
 
@@ -199,25 +191,31 @@ export default function AdminPanel({ state }: Props) {
                     provider: state.address,
                     borrower: attestBorrower,
                 };
+
+                // Still save to localStorage mostly for same-origin dev testing
                 localStorage.setItem(
                     `ewa_pending_attestation_${attestBorrower}`,
                     JSON.stringify(attestData)
                 );
 
+                // Generate Base64 Claim Code for Cross-Origin testing
+                const base64Code = btoa(JSON.stringify(attestData));
+                setAttestationCode(base64Code);
+
                 const balance = await state.provider!.getBalance(state.address);
-                if (balance >= ethers.parseEther('0.005')) {
-                    setStatus('⏳ Sponsoring gas for borrower (0.005 MON)...');
+                if (balance >= ethers.parseEther('1.0')) {
+                    setStatus('⏳ Sponsoring initial funds for borrower (1.0 MON)...');
                     const gasTx = await state.signer.sendTransaction({
                         to: attestBorrower,
-                        value: ethers.parseEther('0.005')
+                        value: ethers.parseEther('1.0')
                     });
                     await gasTx.wait();
                     setStatus(
-                        `✅ Attestation signed & 0.005 MON sent! Borrower ${attestBorrower.slice(0, 6)}...${attestBorrower.slice(-4)} can now claim on-chain.`
+                        `✅ Attestation signed & 1.0 MON sent! Borrower ${attestBorrower.slice(0, 6)}...${attestBorrower.slice(-4)} can now claim on-chain.`
                     );
                 } else {
                     setStatus(
-                        `✅ Attestation signed! (Skipped gas sponsor due to low balance). Borrower ${attestBorrower.slice(0, 6)}...${attestBorrower.slice(-4)} can now claim on-chain.`
+                        `✅ Attestation signed! (Skipped initial funding due to low balance). Borrower ${attestBorrower.slice(0, 6)}...${attestBorrower.slice(-4)} can now claim on-chain.`
                     );
                 }
             }
@@ -237,7 +235,7 @@ export default function AdminPanel({ state }: Props) {
             const router = new ethers.Contract(CONTRACTS.payrollRouter, PAYROLL_ROUTER_ABI, state.signer);
             const amountWei = ethers.parseEther(payrollAmount);
 
-            // Auto-compute deduction: min(outstanding obligation, payroll amount)
+            // Auto-compute deduction preview (only used for UI display now)
             const deductWei = outstandingObligation > 0n
                 ? (outstandingObligation > amountWei ? amountWei : outstandingObligation)
                 : 0n;
@@ -255,7 +253,6 @@ export default function AdminPanel({ state }: Props) {
             setStatus('⏳ Processing payroll deposit...');
             const tx = await router.depositPayroll(
                 payrollEmployee,
-                deductWei,
                 nullifier,
                 proof,
                 { value: amountWei }
@@ -475,6 +472,33 @@ export default function AdminPanel({ state }: Props) {
                             </span>
                         </div>
                     </div>
+
+                    {attestationCode && (
+                        <div className="alert alert-success" style={{ marginTop: 16 }}>
+                            <strong>🎉 Attestation Ready!</strong>
+                            <p style={{ margin: '8px 0', fontSize: '0.9rem' }}>
+                                Since the borrower app runs on a different port, you must copy this code and paste it on the Borrower App onboarding screen.
+                            </p>
+                            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                                <input
+                                    readOnly
+                                    className="form-input"
+                                    value={attestationCode}
+                                    onClick={e => (e.target as HTMLInputElement).select()}
+                                    style={{ flex: 1, fontFamily: 'monospace', fontSize: '0.8rem' }}
+                                />
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(attestationCode);
+                                        setStatus('✅ Copied to clipboard!');
+                                    }}
+                                >
+                                    Copy Code
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Section 3: Process Payroll */}
@@ -589,7 +613,7 @@ export default function AdminPanel({ state }: Props) {
                         the deduction — the contract enforces it. This is the "Klarna for wages" mechanic.
                     </p>
                 </div>
-            </div>
+            </div >
 
             <TxToast txHash={txHash} onDismiss={() => setTxHash(null)} />
         </>

@@ -191,7 +191,7 @@ This page lets you act as an employer/company:
 - The remainder is forwarded to the employee's wallet
 - The preview shows the auto-computed split in real-time
 
-> The admin app automatically sponsors gas! When the employer registers an employee or issues an attestation, it automatically sends 0.05 MON to the employee wallet, so the borrower never needs to use a faucet.
+> The admin app automatically sponsors gas! When the employer registers an employee or issues an attestation, it automatically sends 1.0 MON to the employee wallet, so the borrower never needs to use a faucet.
 
 ---
 
