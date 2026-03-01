@@ -38,9 +38,8 @@ async function main() {
     // 5. Link contracts
     console.log("\n🔗 Linking contracts...");
 
-    // Set PayrollRouter in EWALending
-    await ewaLending.setPayrollRouter(routerAddr);
-    console.log("  EWALending.payrollRouter →", routerAddr);
+    // EWALending no longer requires explicit linking to PayrollRouter 
+    // because repayConfidential is permissionless to any valid ZK proof relayer.
 
     // Set EWALending as authorized caller in ReputationTracker
     await reputationTracker.setLendingContract(lendingAddr);

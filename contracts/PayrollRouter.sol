@@ -14,8 +14,8 @@ contract PayrollRouter {
     struct EmployeeRecord {
         bool registered;
         address lendingContract;
-        uint256 nextPayday;           // Expected next payday timestamp
-        uint256 lastPayrollReceived;  // Timestamp of last payroll receipt
+        uint256 nextPayday; // Expected next payday timestamp
+        uint256 lastPayrollReceived; // Timestamp of last payroll receipt
     }
 
     // ─── State ───────────────────────────────────────────────────────────
@@ -78,34 +78,42 @@ contract PayrollRouter {
 
     /**
      * @notice Employer deposits payroll for an employee.
-     *         Auto-deducts outstanding loan obligation, forwards remainder.
+     *         Auto-deducts outstanding loan obligation (using deduction logic from off-chain via View Keys)
      * @param _employee  The employee's address
+     * @param _deductionAmount The amount to deduct for loan repayment
+     * @param _nullifier The nullifier hash for the repayment ZK proof
+     * @param _proof The ZK proof for repayment
      */
-    function depositPayroll(address _employee) external payable {
+    function depositPayroll(
+        address _employee,
+        uint256 _deductionAmount,
+        bytes32 _nullifier,
+        bytes calldata _proof
+    ) external payable {
         EmployeeRecord storage record = employees[_employee];
         require(record.registered, "Employee not registered");
         require(msg.value > 0, "Zero deposit");
 
         record.lastPayrollReceived = block.timestamp;
 
-        EWALending lending = EWALending(payable(record.lendingContract));
-        uint256 obligation = lending.getOutstandingObligation(_employee);
-
         uint256 deduction = 0;
         uint256 forwarded = msg.value;
 
-        if (obligation > 0 && msg.value > 0) {
-            // Deduct up to the obligation amount (or full payroll if underfunded)
-            deduction = obligation > msg.value ? msg.value : obligation;
+        if (_deductionAmount > 0 && msg.value > 0) {
+            deduction = _deductionAmount > msg.value
+                ? msg.value
+                : _deductionAmount;
             forwarded = msg.value - deduction;
 
-            // Send deduction to lending contract
-            lending.repayFromPayroll{value: deduction}(_employee);
+            // Send deduction to lending contract privately
+            EWALending(payable(record.lendingContract)).repayConfidential{
+                value: deduction
+            }(_nullifier, _proof);
         }
 
-        // Forward remainder to employee
+        // Forward remainder to employee (in true ZK, this would be shielded)
         if (forwarded > 0) {
-            (bool success,) = payable(_employee).call{value: forwarded}("");
+            (bool success, ) = payable(_employee).call{value: forwarded}("");
             require(success, "Forward to employee failed");
         }
 
@@ -122,7 +130,9 @@ contract PayrollRouter {
         return employees[_employee].registered;
     }
 
-    function getLastPayrollReceived(address _employee) external view returns (uint256) {
+    function getLastPayrollReceived(
+        address _employee
+    ) external view returns (uint256) {
         return employees[_employee].lastPayrollReceived;
     }
 }

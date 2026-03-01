@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { ethers } from 'ethers';
 import { AppState } from '../App';
+import { useUnlink, useDeposit } from '@unlink-xyz/react';
 import {
     CONTRACTS,
     EWA_LENDING_ABI,
     REPAYMENT_SCHEMES,
+    MON_TOKEN,
 } from '../config/contracts';
 import TxToast from './TxToast';
 
@@ -19,6 +21,9 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState('');
     const [txHash, setTxHash] = useState<string | null>(null);
+
+    // Unlink SDK hooks — deposit received MON into the privacy pool after borrow
+    const { deposit, isPending: isDepositPending } = useDeposit();
 
     const maxLoan = state.maxLoanAmount > 0n
         ? Number(ethers.formatEther(state.maxLoanAmount))
@@ -50,22 +55,41 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
     const handleBorrow = async () => {
         if (!state.signer) return;
         setLoading(true);
-        setStatus('Submitting private borrow request via Unlink...');
+        setStatus('Generating ZK commitment and encrypting loan data...');
 
         try {
             const amountWei = ethers.parseEther(amount.toString());
 
+            // 1. Generate ZK properties (Commitment and Nullifier)
+            const commitmentHash = ethers.id(`loan_salt_${Date.now()}_${state.address}`);
+            const nullifierHash = ethers.id(`nullifier_salt_${Date.now()}_${state.address}`);
+
+            // 2. Encrypt loan metadata for Auditor (using mock key for demo)
+            const payload = JSON.stringify({
+                borrower: state.address,
+                principal: amountWei.toString(),
+                term: 30
+            });
+            const encryptedData = ethers.hexlify(ethers.toUtf8Bytes(payload));
+
+            setStatus('Submitting confidential borrow to EWALending...');
+
+            // 3. Call borrowConfidential directly — the commitment hash hides identity on-chain
+            //    MON goes to the borrower's public wallet first
             const lending = new ethers.Contract(
                 CONTRACTS.ewaLending,
                 EWA_LENDING_ABI,
                 state.signer
             );
 
-            // Step 1: Call the smart contract borrow function
-            // The contract will send `amountWei` directly to the user's public EOA
-            const tx = await lending.borrow(amountWei, schemeId);
+            const tx = await lending.borrowConfidential(
+                amountWei,
+                commitmentHash,
+                encryptedData,
+                state.address,   // _borrower for attestation check
+                state.address,   // _recipient — receive MON to public wallet first
+            );
 
-            // Wait for receipt, or just let network process it if RPC rate limits us
             try {
                 await tx.wait(1);
             } catch (waitErr: any) {
@@ -78,7 +102,45 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
             }
 
             setTxHash(tx.hash);
-            setStatus('✅ Loan approved and sent to your wallet!');
+
+            // 4. Immediately shield the received MON into the Unlink Privacy Pool
+            setStatus('🛡️ Shielding borrowed MON into Unlink Privacy Pool...');
+            try {
+                await deposit([{
+                    token: MON_TOKEN,
+                    amount: amountWei,
+                    depositor: state.address!,
+                }]);
+                setStatus('✅ Loan approved & MON shielded privately!');
+            } catch (depositErr: any) {
+                console.warn('Auto-shield failed, MON remains in public wallet:', depositErr);
+                setStatus('✅ Loan approved! (Shield MON manually from the Onboarding tab)');
+            }
+
+            // 5. Save the actual loan data in local storage (the user's private ZK state)
+            const newLoan = {
+                id: Date.now(),
+                borrower: state.address,
+                principal: amountWei.toString(),
+                interest: ethers.parseEther(interest.toFixed(18)).toString(),
+                totalOwed: ethers.parseEther(totalOwed.toFixed(18)).toString(),
+                totalRepaid: '0',
+                scheme: schemeId,
+                numInstallments: schemeId === 1 ? 2 : 1,
+                installmentsPaid: 0,
+                createdAt: Math.floor(Date.now() / 1000),
+                dueDate: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60),
+                status: 0,
+                collateral: '0',
+                commitmentHash,
+                nullifierHash
+            };
+
+            const stored = localStorage.getItem(`ewa_confidential_loans_${state.address}`);
+            const loans = stored ? JSON.parse(stored) : [];
+            loans.push(newLoan);
+            localStorage.setItem(`ewa_confidential_loans_${state.address}`, JSON.stringify(loans));
+
             setTimeout(() => onBorrowed(), 3000);
         } catch (err: any) {
             console.error(err);

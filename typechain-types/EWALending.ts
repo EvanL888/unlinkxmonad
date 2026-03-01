@@ -23,148 +23,53 @@ import type {
   TypedContractMethod,
 } from "./common";
 
-export declare namespace EWALending {
-  export type LoanStruct = {
-    id: BigNumberish;
-    borrower: AddressLike;
-    principal: BigNumberish;
-    interest: BigNumberish;
-    totalOwed: BigNumberish;
-    totalRepaid: BigNumberish;
-    scheme: BigNumberish;
-    numInstallments: BigNumberish;
-    installmentsPaid: BigNumberish;
-    createdAt: BigNumberish;
-    dueDate: BigNumberish;
-    status: BigNumberish;
-    collateral: BigNumberish;
-  };
-
-  export type LoanStructOutput = [
-    id: bigint,
-    borrower: string,
-    principal: bigint,
-    interest: bigint,
-    totalOwed: bigint,
-    totalRepaid: bigint,
-    scheme: bigint,
-    numInstallments: bigint,
-    installmentsPaid: bigint,
-    createdAt: bigint,
-    dueDate: bigint,
-    status: bigint,
-    collateral: bigint
-  ] & {
-    id: bigint;
-    borrower: string;
-    principal: bigint;
-    interest: bigint;
-    totalOwed: bigint;
-    totalRepaid: bigint;
-    scheme: bigint;
-    numInstallments: bigint;
-    installmentsPaid: bigint;
-    createdAt: bigint;
-    dueDate: bigint;
-    status: bigint;
-    collateral: bigint;
-  };
-}
-
 export interface EWALendingInterface extends Interface {
   getFunction(
     nameOrSignature:
+      | "activeCommitments"
       | "attestationRegistry"
-      | "borrow"
-      | "borrowWithCollateral"
-      | "borrowerLoanIds"
-      | "defaultTermDays"
+      | "borrowConfidential"
       | "depositLiquidity"
-      | "getActiveLoans"
-      | "getBorrowerLoanCount"
-      | "getLoan"
-      | "getOutstandingObligation"
-      | "liquidate"
-      | "loans"
       | "maxLoanAmount"
       | "owner"
-      | "payrollRouter"
-      | "repay"
-      | "repayFromPayroll"
+      | "repayConfidential"
       | "reputationTracker"
       | "setMaxLoanAmount"
-      | "setPayrollRouter"
       | "totalLiquidity"
+      | "usedNullifiers"
   ): FunctionFragment;
 
   getEvent(
     nameOrSignatureOrTopic:
+      | "ConfidentialLoanCreated"
+      | "ConfidentialLoanRepaid"
       | "LiquidityDeposited"
-      | "LoanCreated"
-      | "LoanDefaulted"
-      | "LoanFullyRepaid"
-      | "LoanRepaid"
-      | "PayrollRepayment"
   ): EventFragment;
 
+  encodeFunctionData(
+    functionFragment: "activeCommitments",
+    values: [BytesLike]
+  ): string;
   encodeFunctionData(
     functionFragment: "attestationRegistry",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: "borrow",
-    values: [BigNumberish, BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "borrowWithCollateral",
-    values: [BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "borrowerLoanIds",
-    values: [AddressLike, BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "defaultTermDays",
-    values?: undefined
+    functionFragment: "borrowConfidential",
+    values: [BigNumberish, BytesLike, BytesLike, AddressLike, AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "depositLiquidity",
     values?: undefined
   ): string;
-  encodeFunctionData(
-    functionFragment: "getActiveLoans",
-    values: [AddressLike]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "getBorrowerLoanCount",
-    values: [AddressLike]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "getLoan",
-    values: [BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "getOutstandingObligation",
-    values: [AddressLike]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "liquidate",
-    values: [BigNumberish]
-  ): string;
-  encodeFunctionData(functionFragment: "loans", values: [BigNumberish]): string;
   encodeFunctionData(
     functionFragment: "maxLoanAmount",
     values?: undefined
   ): string;
   encodeFunctionData(functionFragment: "owner", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: "payrollRouter",
-    values?: undefined
-  ): string;
-  encodeFunctionData(functionFragment: "repay", values: [BigNumberish]): string;
-  encodeFunctionData(
-    functionFragment: "repayFromPayroll",
-    values: [AddressLike]
+    functionFragment: "repayConfidential",
+    values: [BytesLike, BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "reputationTracker",
@@ -175,29 +80,24 @@ export interface EWALendingInterface extends Interface {
     values: [BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: "setPayrollRouter",
-    values: [AddressLike]
-  ): string;
-  encodeFunctionData(
     functionFragment: "totalLiquidity",
     values?: undefined
   ): string;
+  encodeFunctionData(
+    functionFragment: "usedNullifiers",
+    values: [BytesLike]
+  ): string;
 
+  decodeFunctionResult(
+    functionFragment: "activeCommitments",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "attestationRegistry",
     data: BytesLike
   ): Result;
-  decodeFunctionResult(functionFragment: "borrow", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "borrowWithCollateral",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "borrowerLoanIds",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "defaultTermDays",
+    functionFragment: "borrowConfidential",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -205,32 +105,12 @@ export interface EWALendingInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "getActiveLoans",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "getBorrowerLoanCount",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(functionFragment: "getLoan", data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: "getOutstandingObligation",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(functionFragment: "liquidate", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "loans", data: BytesLike): Result;
-  decodeFunctionResult(
     functionFragment: "maxLoanAmount",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "payrollRouter",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(functionFragment: "repay", data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: "repayFromPayroll",
+    functionFragment: "repayConfidential",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -242,13 +122,41 @@ export interface EWALendingInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "setPayrollRouter",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
     functionFragment: "totalLiquidity",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(
+    functionFragment: "usedNullifiers",
+    data: BytesLike
+  ): Result;
+}
+
+export namespace ConfidentialLoanCreatedEvent {
+  export type InputTuple = [
+    commitmentHash: BytesLike,
+    encryptedLoanData: BytesLike
+  ];
+  export type OutputTuple = [commitmentHash: string, encryptedLoanData: string];
+  export interface OutputObject {
+    commitmentHash: string;
+    encryptedLoanData: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace ConfidentialLoanRepaidEvent {
+  export type InputTuple = [nullifierHash: BytesLike];
+  export type OutputTuple = [nullifierHash: string];
+  export interface OutputObject {
+    nullifierHash: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
 }
 
 export namespace LiquidityDepositedEvent {
@@ -257,102 +165,6 @@ export namespace LiquidityDepositedEvent {
   export interface OutputObject {
     provider: string;
     amount: bigint;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
-}
-
-export namespace LoanCreatedEvent {
-  export type InputTuple = [
-    loanId: BigNumberish,
-    borrower: AddressLike,
-    principal: BigNumberish,
-    interest: BigNumberish,
-    scheme: BigNumberish
-  ];
-  export type OutputTuple = [
-    loanId: bigint,
-    borrower: string,
-    principal: bigint,
-    interest: bigint,
-    scheme: bigint
-  ];
-  export interface OutputObject {
-    loanId: bigint;
-    borrower: string;
-    principal: bigint;
-    interest: bigint;
-    scheme: bigint;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
-}
-
-export namespace LoanDefaultedEvent {
-  export type InputTuple = [loanId: BigNumberish];
-  export type OutputTuple = [loanId: bigint];
-  export interface OutputObject {
-    loanId: bigint;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
-}
-
-export namespace LoanFullyRepaidEvent {
-  export type InputTuple = [loanId: BigNumberish];
-  export type OutputTuple = [loanId: bigint];
-  export interface OutputObject {
-    loanId: bigint;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
-}
-
-export namespace LoanRepaidEvent {
-  export type InputTuple = [
-    loanId: BigNumberish,
-    amountPaid: BigNumberish,
-    remaining: BigNumberish
-  ];
-  export type OutputTuple = [
-    loanId: bigint,
-    amountPaid: bigint,
-    remaining: bigint
-  ];
-  export interface OutputObject {
-    loanId: bigint;
-    amountPaid: bigint;
-    remaining: bigint;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
-}
-
-export namespace PayrollRepaymentEvent {
-  export type InputTuple = [
-    borrower: AddressLike,
-    amountApplied: BigNumberish,
-    loansAffected: BigNumberish
-  ];
-  export type OutputTuple = [
-    borrower: string,
-    amountApplied: bigint,
-    loansAffected: bigint
-  ];
-  export interface OutputObject {
-    borrower: string;
-    amountApplied: bigint;
-    loansAffected: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -403,102 +215,30 @@ export interface EWALending extends BaseContract {
     event?: TCEvent
   ): Promise<this>;
 
+  activeCommitments: TypedContractMethod<[arg0: BytesLike], [boolean], "view">;
+
   attestationRegistry: TypedContractMethod<[], [string], "view">;
 
-  borrow: TypedContractMethod<
-    [_amount: BigNumberish, _scheme: BigNumberish],
+  borrowConfidential: TypedContractMethod<
+    [
+      _amount: BigNumberish,
+      _commitmentHash: BytesLike,
+      _encryptedData: BytesLike,
+      _borrower: AddressLike,
+      _recipient: AddressLike
+    ],
     [void],
     "nonpayable"
   >;
 
-  borrowWithCollateral: TypedContractMethod<
-    [_borrowAmount: BigNumberish],
-    [void],
-    "payable"
-  >;
-
-  borrowerLoanIds: TypedContractMethod<
-    [arg0: AddressLike, arg1: BigNumberish],
-    [bigint],
-    "view"
-  >;
-
-  defaultTermDays: TypedContractMethod<[], [bigint], "view">;
-
   depositLiquidity: TypedContractMethod<[], [void], "payable">;
-
-  getActiveLoans: TypedContractMethod<
-    [_borrower: AddressLike],
-    [EWALending.LoanStructOutput[]],
-    "view"
-  >;
-
-  getBorrowerLoanCount: TypedContractMethod<
-    [_borrower: AddressLike],
-    [bigint],
-    "view"
-  >;
-
-  getLoan: TypedContractMethod<
-    [_loanId: BigNumberish],
-    [EWALending.LoanStructOutput],
-    "view"
-  >;
-
-  getOutstandingObligation: TypedContractMethod<
-    [_borrower: AddressLike],
-    [bigint],
-    "view"
-  >;
-
-  liquidate: TypedContractMethod<[_loanId: BigNumberish], [void], "nonpayable">;
-
-  loans: TypedContractMethod<
-    [arg0: BigNumberish],
-    [
-      [
-        bigint,
-        string,
-        bigint,
-        bigint,
-        bigint,
-        bigint,
-        bigint,
-        bigint,
-        bigint,
-        bigint,
-        bigint,
-        bigint,
-        bigint
-      ] & {
-        id: bigint;
-        borrower: string;
-        principal: bigint;
-        interest: bigint;
-        totalOwed: bigint;
-        totalRepaid: bigint;
-        scheme: bigint;
-        numInstallments: bigint;
-        installmentsPaid: bigint;
-        createdAt: bigint;
-        dueDate: bigint;
-        status: bigint;
-        collateral: bigint;
-      }
-    ],
-    "view"
-  >;
 
   maxLoanAmount: TypedContractMethod<[], [bigint], "view">;
 
   owner: TypedContractMethod<[], [string], "view">;
 
-  payrollRouter: TypedContractMethod<[], [string], "view">;
-
-  repay: TypedContractMethod<[_loanId: BigNumberish], [void], "payable">;
-
-  repayFromPayroll: TypedContractMethod<
-    [_borrower: AddressLike],
+  repayConfidential: TypedContractMethod<
+    [_nullifierHash: BytesLike, _proof: BytesLike],
     [void],
     "payable"
   >;
@@ -511,104 +251,36 @@ export interface EWALending extends BaseContract {
     "nonpayable"
   >;
 
-  setPayrollRouter: TypedContractMethod<
-    [_router: AddressLike],
-    [void],
-    "nonpayable"
-  >;
-
   totalLiquidity: TypedContractMethod<[], [bigint], "view">;
+
+  usedNullifiers: TypedContractMethod<[arg0: BytesLike], [boolean], "view">;
 
   getFunction<T extends ContractMethod = ContractMethod>(
     key: string | FunctionFragment
   ): T;
 
   getFunction(
+    nameOrSignature: "activeCommitments"
+  ): TypedContractMethod<[arg0: BytesLike], [boolean], "view">;
+  getFunction(
     nameOrSignature: "attestationRegistry"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: "borrow"
+    nameOrSignature: "borrowConfidential"
   ): TypedContractMethod<
-    [_amount: BigNumberish, _scheme: BigNumberish],
+    [
+      _amount: BigNumberish,
+      _commitmentHash: BytesLike,
+      _encryptedData: BytesLike,
+      _borrower: AddressLike,
+      _recipient: AddressLike
+    ],
     [void],
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "borrowWithCollateral"
-  ): TypedContractMethod<[_borrowAmount: BigNumberish], [void], "payable">;
-  getFunction(
-    nameOrSignature: "borrowerLoanIds"
-  ): TypedContractMethod<
-    [arg0: AddressLike, arg1: BigNumberish],
-    [bigint],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "defaultTermDays"
-  ): TypedContractMethod<[], [bigint], "view">;
-  getFunction(
     nameOrSignature: "depositLiquidity"
   ): TypedContractMethod<[], [void], "payable">;
-  getFunction(
-    nameOrSignature: "getActiveLoans"
-  ): TypedContractMethod<
-    [_borrower: AddressLike],
-    [EWALending.LoanStructOutput[]],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "getBorrowerLoanCount"
-  ): TypedContractMethod<[_borrower: AddressLike], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "getLoan"
-  ): TypedContractMethod<
-    [_loanId: BigNumberish],
-    [EWALending.LoanStructOutput],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "getOutstandingObligation"
-  ): TypedContractMethod<[_borrower: AddressLike], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "liquidate"
-  ): TypedContractMethod<[_loanId: BigNumberish], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "loans"
-  ): TypedContractMethod<
-    [arg0: BigNumberish],
-    [
-      [
-        bigint,
-        string,
-        bigint,
-        bigint,
-        bigint,
-        bigint,
-        bigint,
-        bigint,
-        bigint,
-        bigint,
-        bigint,
-        bigint,
-        bigint
-      ] & {
-        id: bigint;
-        borrower: string;
-        principal: bigint;
-        interest: bigint;
-        totalOwed: bigint;
-        totalRepaid: bigint;
-        scheme: bigint;
-        numInstallments: bigint;
-        installmentsPaid: bigint;
-        createdAt: bigint;
-        dueDate: bigint;
-        status: bigint;
-        collateral: bigint;
-      }
-    ],
-    "view"
-  >;
   getFunction(
     nameOrSignature: "maxLoanAmount"
   ): TypedContractMethod<[], [bigint], "view">;
@@ -616,14 +288,12 @@ export interface EWALending extends BaseContract {
     nameOrSignature: "owner"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: "payrollRouter"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "repay"
-  ): TypedContractMethod<[_loanId: BigNumberish], [void], "payable">;
-  getFunction(
-    nameOrSignature: "repayFromPayroll"
-  ): TypedContractMethod<[_borrower: AddressLike], [void], "payable">;
+    nameOrSignature: "repayConfidential"
+  ): TypedContractMethod<
+    [_nullifierHash: BytesLike, _proof: BytesLike],
+    [void],
+    "payable"
+  >;
   getFunction(
     nameOrSignature: "reputationTracker"
   ): TypedContractMethod<[], [string], "view">;
@@ -631,12 +301,26 @@ export interface EWALending extends BaseContract {
     nameOrSignature: "setMaxLoanAmount"
   ): TypedContractMethod<[_max: BigNumberish], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: "setPayrollRouter"
-  ): TypedContractMethod<[_router: AddressLike], [void], "nonpayable">;
-  getFunction(
     nameOrSignature: "totalLiquidity"
   ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "usedNullifiers"
+  ): TypedContractMethod<[arg0: BytesLike], [boolean], "view">;
 
+  getEvent(
+    key: "ConfidentialLoanCreated"
+  ): TypedContractEvent<
+    ConfidentialLoanCreatedEvent.InputTuple,
+    ConfidentialLoanCreatedEvent.OutputTuple,
+    ConfidentialLoanCreatedEvent.OutputObject
+  >;
+  getEvent(
+    key: "ConfidentialLoanRepaid"
+  ): TypedContractEvent<
+    ConfidentialLoanRepaidEvent.InputTuple,
+    ConfidentialLoanRepaidEvent.OutputTuple,
+    ConfidentialLoanRepaidEvent.OutputObject
+  >;
   getEvent(
     key: "LiquidityDeposited"
   ): TypedContractEvent<
@@ -644,43 +328,30 @@ export interface EWALending extends BaseContract {
     LiquidityDepositedEvent.OutputTuple,
     LiquidityDepositedEvent.OutputObject
   >;
-  getEvent(
-    key: "LoanCreated"
-  ): TypedContractEvent<
-    LoanCreatedEvent.InputTuple,
-    LoanCreatedEvent.OutputTuple,
-    LoanCreatedEvent.OutputObject
-  >;
-  getEvent(
-    key: "LoanDefaulted"
-  ): TypedContractEvent<
-    LoanDefaultedEvent.InputTuple,
-    LoanDefaultedEvent.OutputTuple,
-    LoanDefaultedEvent.OutputObject
-  >;
-  getEvent(
-    key: "LoanFullyRepaid"
-  ): TypedContractEvent<
-    LoanFullyRepaidEvent.InputTuple,
-    LoanFullyRepaidEvent.OutputTuple,
-    LoanFullyRepaidEvent.OutputObject
-  >;
-  getEvent(
-    key: "LoanRepaid"
-  ): TypedContractEvent<
-    LoanRepaidEvent.InputTuple,
-    LoanRepaidEvent.OutputTuple,
-    LoanRepaidEvent.OutputObject
-  >;
-  getEvent(
-    key: "PayrollRepayment"
-  ): TypedContractEvent<
-    PayrollRepaymentEvent.InputTuple,
-    PayrollRepaymentEvent.OutputTuple,
-    PayrollRepaymentEvent.OutputObject
-  >;
 
   filters: {
+    "ConfidentialLoanCreated(bytes32,bytes)": TypedContractEvent<
+      ConfidentialLoanCreatedEvent.InputTuple,
+      ConfidentialLoanCreatedEvent.OutputTuple,
+      ConfidentialLoanCreatedEvent.OutputObject
+    >;
+    ConfidentialLoanCreated: TypedContractEvent<
+      ConfidentialLoanCreatedEvent.InputTuple,
+      ConfidentialLoanCreatedEvent.OutputTuple,
+      ConfidentialLoanCreatedEvent.OutputObject
+    >;
+
+    "ConfidentialLoanRepaid(bytes32)": TypedContractEvent<
+      ConfidentialLoanRepaidEvent.InputTuple,
+      ConfidentialLoanRepaidEvent.OutputTuple,
+      ConfidentialLoanRepaidEvent.OutputObject
+    >;
+    ConfidentialLoanRepaid: TypedContractEvent<
+      ConfidentialLoanRepaidEvent.InputTuple,
+      ConfidentialLoanRepaidEvent.OutputTuple,
+      ConfidentialLoanRepaidEvent.OutputObject
+    >;
+
     "LiquidityDeposited(address,uint256)": TypedContractEvent<
       LiquidityDepositedEvent.InputTuple,
       LiquidityDepositedEvent.OutputTuple,
@@ -690,61 +361,6 @@ export interface EWALending extends BaseContract {
       LiquidityDepositedEvent.InputTuple,
       LiquidityDepositedEvent.OutputTuple,
       LiquidityDepositedEvent.OutputObject
-    >;
-
-    "LoanCreated(uint256,address,uint256,uint256,uint8)": TypedContractEvent<
-      LoanCreatedEvent.InputTuple,
-      LoanCreatedEvent.OutputTuple,
-      LoanCreatedEvent.OutputObject
-    >;
-    LoanCreated: TypedContractEvent<
-      LoanCreatedEvent.InputTuple,
-      LoanCreatedEvent.OutputTuple,
-      LoanCreatedEvent.OutputObject
-    >;
-
-    "LoanDefaulted(uint256)": TypedContractEvent<
-      LoanDefaultedEvent.InputTuple,
-      LoanDefaultedEvent.OutputTuple,
-      LoanDefaultedEvent.OutputObject
-    >;
-    LoanDefaulted: TypedContractEvent<
-      LoanDefaultedEvent.InputTuple,
-      LoanDefaultedEvent.OutputTuple,
-      LoanDefaultedEvent.OutputObject
-    >;
-
-    "LoanFullyRepaid(uint256)": TypedContractEvent<
-      LoanFullyRepaidEvent.InputTuple,
-      LoanFullyRepaidEvent.OutputTuple,
-      LoanFullyRepaidEvent.OutputObject
-    >;
-    LoanFullyRepaid: TypedContractEvent<
-      LoanFullyRepaidEvent.InputTuple,
-      LoanFullyRepaidEvent.OutputTuple,
-      LoanFullyRepaidEvent.OutputObject
-    >;
-
-    "LoanRepaid(uint256,uint256,uint256)": TypedContractEvent<
-      LoanRepaidEvent.InputTuple,
-      LoanRepaidEvent.OutputTuple,
-      LoanRepaidEvent.OutputObject
-    >;
-    LoanRepaid: TypedContractEvent<
-      LoanRepaidEvent.InputTuple,
-      LoanRepaidEvent.OutputTuple,
-      LoanRepaidEvent.OutputObject
-    >;
-
-    "PayrollRepayment(address,uint256,uint256)": TypedContractEvent<
-      PayrollRepaymentEvent.InputTuple,
-      PayrollRepaymentEvent.OutputTuple,
-      PayrollRepaymentEvent.OutputObject
-    >;
-    PayrollRepayment: TypedContractEvent<
-      PayrollRepaymentEvent.InputTuple,
-      PayrollRepaymentEvent.OutputTuple,
-      PayrollRepaymentEvent.OutputObject
     >;
   };
 }

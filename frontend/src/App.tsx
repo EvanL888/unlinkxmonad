@@ -102,8 +102,27 @@ function App() {
             let maxLoanAmount = 0n;
             let totalLiquidity = 0n;
 
-            try { activeLoans = await lending.getActiveLoans(state.address); } catch (e) { console.error('getActiveLoans failed:', e); }
-            try { totalObligation = await lending.getOutstandingObligation(state.address); } catch (e) { console.error('getOutstandingObligation failed:', e); }
+            // Read confidential loans from local ZK state (simulated via localStorage)
+            try {
+                const storedLoans = localStorage.getItem(`ewa_confidential_loans_${state.address}`);
+                if (storedLoans) {
+                    const parsed = JSON.parse(storedLoans);
+                    activeLoans = parsed.filter((l: any) => l.status === 0).map((l: any) => ({
+                        ...l,
+                        principal: BigInt(l.principal || '0'),
+                        interest: BigInt(l.interest || '0'),
+                        totalOwed: BigInt(l.totalOwed || '0'),
+                        totalRepaid: BigInt(l.totalRepaid || '0'),
+                        collateral: BigInt(l.collateral || '0')
+                    }));
+
+                    for (const l of activeLoans) {
+                        totalObligation += (BigInt(l.totalOwed) - BigInt(l.totalRepaid));
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load local confidential loans:', e);
+            }
             try { maxLoanAmount = await lending.maxLoanAmount(); } catch (e) { console.error('maxLoanAmount failed:', e); }
             try { totalLiquidity = await lending.totalLiquidity(); } catch (e) { console.error('totalLiquidity failed:', e); }
 
