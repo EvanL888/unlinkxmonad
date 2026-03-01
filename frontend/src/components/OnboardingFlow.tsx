@@ -216,7 +216,7 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
                             </div>
                             <button
                                 className="btn btn-primary btn-lg btn-full"
-                                onClick={() => setStep(3)}
+                                onClick={() => setStep(4)}
                             >
                                 Continue →
                             </button>
@@ -230,7 +230,7 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
                             <button
                                 id="switch-chain-btn"
                                 className="btn btn-primary btn-lg btn-full"
-                                onClick={async () => { await handleSwitchToMonad(); setStep(3); }}
+                                onClick={async () => { await handleSwitchToMonad(); setStep(4); }}
                             >
                                 Switch to Monad Testnet
                             </button>
@@ -239,8 +239,8 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
                 </div>
             )}
 
-            {/* Step 3: Submit Attestation */}
-            {step === 3 && (
+            {/* Step 4: Submit Attestation */}
+            {step === 4 && (
                 <div className="card animate-fade-in">
                     <div className="card-header">
                         <div>

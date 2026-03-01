@@ -5,10 +5,10 @@
 
 // After deploying, paste the addresses from deployed-addresses.json here
 export const CONTRACTS = {
-    attestationRegistry: '0xbB0C15216c665C696950d9e7928E0e942De4f6DB',
-    reputationTracker: '0x65eb1Ecc359f4805E6f28e6156914af067DC1117',
-    ewaLending: '0x3c46a0D2199CB9Af6334d75C61AD32Cb9B152e22',
-    payrollRouter: '0xefb677bbB434e96b185fbB676b8a6FCBE6e9987D',
+    attestationRegistry: '0x3Eb3e4808800017057B26B3c7bE7aA8cC7B04BAA',
+    reputationTracker: '0x869357b644c1659172dCcd4E869d0853926d5131',
+    ewaLending: '0x5c2479856CC64B8201d4De7cDA96A3E6D90Bed52',
+    payrollRouter: '0xFedf73F834DC11F9BE7cE18A494aC211e7805643',
 };
 
 export const MONAD_CHAIN_ID = 10143;

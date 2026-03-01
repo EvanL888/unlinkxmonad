@@ -63,19 +63,35 @@ export default function Dashboard({ state, refreshData }: Props) {
                     const remainingPrincipal = remainingOwed > totalInterest ? remainingOwed - totalInterest : 0n;
                     const remainingInterest = remainingOwed > totalInterest ? totalInterest : remainingOwed;
 
+                    const maxLimit = Number(ethers.formatEther(state.maxLoanAmount));
+                    const totalObligationNum = Number(ethers.formatEther(state.totalObligation));
+                    const limitLeft = Math.max(0, maxLimit - totalObligationNum);
+
                     return (
-                        <div className="stat-card">
-                            <div className="stat-label">Outstanding Obligation</div>
-                            <div className="stat-value gradient">
-                                {remainingOwed > 0n ? ethers.formatEther(remainingOwed) : '0'} MON
-                            </div>
-                            {remainingOwed > 0n && (
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 8 }}>
-                                    <div>Principal: {Number(ethers.formatEther(remainingPrincipal)).toFixed(4)} MON</div>
-                                    <div>Interest: {Number(ethers.formatEther(remainingInterest)).toFixed(4)} MON</div>
+                        <>
+                            <div className="stat-card">
+                                <div className="stat-label">Available Credit</div>
+                                <div className="stat-value gradient">
+                                    {limitLeft.toFixed(2)} MON
                                 </div>
-                            )}
-                        </div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 8 }}>
+                                    Total Limit: {maxLimit.toFixed(2)} MON
+                                </div>
+                            </div>
+
+                            <div className="stat-card">
+                                <div className="stat-label">Outstanding Obligation</div>
+                                <div className="stat-value gradient">
+                                    {remainingOwed > 0n ? ethers.formatEther(remainingOwed) : '0'} MON
+                                </div>
+                                {remainingOwed > 0n && (
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 8 }}>
+                                        <div>Principal: {Number(ethers.formatEther(remainingPrincipal)).toFixed(4)} MON</div>
+                                        <div>Interest: {Number(ethers.formatEther(remainingInterest)).toFixed(4)} MON</div>
+                                    </div>
+                                )}
+                            </div>
+                        </>
                     );
                 })()}
 
@@ -109,11 +125,10 @@ export default function Dashboard({ state, refreshData }: Props) {
                                         .filter((l: any) => Number(l.status) === 0)
                                         .map((loan: any, idx: number) => {
                                             const amountDue = Number(ethers.formatEther(BigInt(loan.totalOwed) - BigInt(loan.totalRepaid))).toFixed(4);
-                                            // Ideally, we'd query PayrollRouter for the exact payday, but for UI purposes,
-                                            // we display the Loan Due Date as the target settlement boundary.
-                                            const dueDate = new Date(Number(loan.dueDate) * 1000).toLocaleString('en-US', {
+                                            // For the demo purposes (hackathon), the exact payday is strictly simulated as "Today"
+                                            const dueDate = new Date().toLocaleString('en-US', {
                                                 month: 'short', day: 'numeric', year: 'numeric'
-                                            });
+                                            }) + ' (Next Payday)';
 
                                             return (
                                                 <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
