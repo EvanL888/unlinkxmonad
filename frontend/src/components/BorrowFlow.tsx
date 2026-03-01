@@ -6,6 +6,7 @@ import {
     EWA_LENDING_ABI,
     REPAYMENT_SCHEMES,
 } from '../config/contracts';
+import TxToast from './TxToast';
 
 interface Props {
     state: AppState;
@@ -17,6 +18,7 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
     const [schemeId, setSchemeId] = useState(0);
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState('');
+    const [txHash, setTxHash] = useState<string | null>(null);
 
     const maxLoan = state.maxLoanAmount > 0n
         ? Number(ethers.formatEther(state.maxLoanAmount))
@@ -69,14 +71,14 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
             } catch (waitErr: any) {
                 if (waitErr?.message?.includes('rate limit') || waitErr?.message?.includes('429')) {
                     console.warn("RPC rate limited on wait(), but tx is likely pending.");
-                    // Give the network 4 seconds to process instead of immediately failing
                     await new Promise(resolve => setTimeout(resolve, 4000));
                 } else {
                     throw waitErr;
                 }
             }
 
-            setStatus(`✅ Loan approved and sent to your public wallet!`);
+            setTxHash(tx.hash);
+            setStatus('✅ Loan approved and sent to your wallet!');
             setTimeout(() => onBorrowed(), 3000);
         } catch (err: any) {
             console.error(err);
@@ -98,6 +100,7 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
     }
 
     return (
+        <>
         <div className="animate-slide-up" style={{ display: 'grid', gap: 24 }}>
             {/* Amount selection */}
             <div className="card">
@@ -227,5 +230,8 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
                 </button>
             </div>
         </div>
+
+        <TxToast txHash={txHash} onDismiss={() => setTxHash(null)} />
+        </>
     );
 }

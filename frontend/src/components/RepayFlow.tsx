@@ -3,6 +3,7 @@ import { ethers } from 'ethers';
 import { AppState } from '../App';
 import { CONTRACTS, EWA_LENDING_ABI } from '../config/contracts';
 import { useInteract, toCall, formatAmount } from '@unlink-xyz/react';
+import TxToast from './TxToast';
 
 interface Props {
     state: AppState;
@@ -18,6 +19,7 @@ export default function RepayFlow({ state, onRepaid }: Props) {
     const [repayAmount, setRepayAmount] = useState('');
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState('');
+    const [txHash, setTxHash] = useState<string | null>(null);
 
     // Unlink hook for atomic shielded -> public -> shielded calls
     const { interact, isPending } = useInteract();
@@ -50,7 +52,8 @@ export default function RepayFlow({ state, onRepaid }: Props) {
                 receive: [{ token: ethers.ZeroAddress, minAmount: 0n }]
             });
 
-            setStatus(`✅ Repayment successful! Relay ID: ${result.relayId}`);
+            setTxHash(result.relayId || null);
+            setStatus(`✅ Repayment successful! Reputation bonus applied.`);
             setSelectedLoan(null);
             setRepayAmount('');
             setTimeout(() => { onRepaid(); setStatus(''); }, 3000);
@@ -76,6 +79,7 @@ export default function RepayFlow({ state, onRepaid }: Props) {
     const activeLoans = state.activeLoans.filter((l: any) => Number(l.status) === 0);
 
     return (
+        <>
         <div className="animate-slide-up" style={{ display: 'grid', gap: 24 }}>
             {/* Auto-deduction info */}
             <div className="card card-gradient">
@@ -219,5 +223,8 @@ export default function RepayFlow({ state, onRepaid }: Props) {
                 </p>
             </div>
         </div>
+
+        <TxToast txHash={txHash} onDismiss={() => setTxHash(null)} />
+        </>
     );
 }

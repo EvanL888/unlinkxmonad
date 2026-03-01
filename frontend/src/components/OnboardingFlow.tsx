@@ -7,6 +7,7 @@ import {
     ATTESTATION_REGISTRY_ABI,
     MONAD_CHAIN_ID,
 } from '../config/contracts';
+import TxToast from './TxToast';
 
 interface Props {
     state: AppState;
@@ -19,6 +20,7 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
     const [step, setStep] = useState(state.connected ? (walletExists ? 3 : 2) : 1);
     const [loading, setLoading] = useState(false);
     const [attestationStatus, setAttestationStatus] = useState('');
+    const [txHash, setTxHash] = useState<string | null>(null);
 
     const handleCreateUnlinkWallet = async () => {
         try {
@@ -62,47 +64,67 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
     const handleSubmitAttestation = async () => {
         if (!state.signer) return;
         setLoading(true);
-        setAttestationStatus('Generating attestation...');
+        setAttestationStatus('Checking attestation status...');
 
         try {
-            // For demo: simulate signing an attestation locally
-            // In production, this would come from the attestation provider server
-            const attestationData = { employed: true, salaryAbove: 3000 };
-            const attestationHash = ethers.keccak256(
-                ethers.toUtf8Bytes(JSON.stringify(attestationData))
-            );
-            const employerHash = ethers.keccak256(ethers.toUtf8Bytes('Acme Corp'));
-            const expiry = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
-
-            setAttestationStatus('Preparing signature...');
-
-            // The contract will verify the signature
+            const address = await state.signer.getAddress();
             const registry = new ethers.Contract(
                 CONTRACTS.attestationRegistry,
                 ATTESTATION_REGISTRY_ABI,
                 state.signer
             );
 
+            // Check if attestation is already registered on-chain (e.g. via issue-attestation script)
+            const alreadyValid = await registry.isValid(address);
+            if (alreadyValid) {
+                setAttestationStatus('✅ Attestation already registered on-chain!');
+                setTimeout(() => onComplete(), 1200);
+                return;
+            }
+
+            // Not yet registered — attempt to register with pre-signed attestation data
+            setAttestationStatus('Preparing attestation...');
+
+            const attestationData = {
+                employed: true,
+                salaryAboveThreshold: true,
+                paySchedule: 'biweekly',
+                verifiedAt: Math.floor(Date.now() / 1000),
+            };
+            const attestationHash = ethers.keccak256(
+                ethers.toUtf8Bytes(JSON.stringify(attestationData))
+            );
+            const employerHash = ethers.keccak256(ethers.toUtf8Bytes('Acme Corp'));
+            const expiry = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
+
             setAttestationStatus('Submitting to blockchain...');
 
-            // In the demo, we need to pass a pre-signed attestation
-            // For hackathon: the attestation should come from the issue-attestation.ts script
-            // Here we show the flow, with a mock tx
+            // Signature must come from the trusted provider (deployer key).
+            // Run the issue-attestation script once to register your address, then this
+            // check above (isValid) will pass automatically on subsequent visits.
             const tx = await registry.registerAttestation(
                 attestationHash,
                 employerHash,
                 expiry,
-                '0x' + '00'.repeat(65) // Placeholder — replace with real signature from script
+                '0x' + '00'.repeat(65) // Placeholder — see instructions below
             );
             await tx.wait();
 
+            setTxHash(tx.hash);
             setAttestationStatus('✅ Attestation registered on-chain!');
             setTimeout(() => onComplete(), 1500);
         } catch (err: any) {
-            if (err.message?.includes('Invalid attestation')) {
+            const address = await state.signer.getAddress().catch(() => '<your_wallet>');
+            if (
+                err.message?.includes('Invalid attestation') ||
+                err.message?.includes('invalid signature') ||
+                err.reason?.includes('Invalid attestation')
+            ) {
                 setAttestationStatus(
-                    '⚠️ Demo mode: Run the issue-attestation script first to get a valid signed attestation. ' +
-                    'The on-chain verification rejected the mock signature (which is correct behavior!).'
+                    `⚠️ Attestation not yet issued for your wallet.\n\n` +
+                    `Run this command in the project terminal:\n\n` +
+                    `BORROWER_ADDRESS=${address} npx hardhat run scripts/issue-attestation.ts --network monad\n\n` +
+                    `Then click "Submit Attestation Proof" again.`
                 );
             } else {
                 setAttestationStatus('❌ Error: ' + (err.reason || err.message));
@@ -113,6 +135,7 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
     };
 
     return (
+        <>
         <div className="animate-slide-up">
             {/* Steps indicator */}
             <div className="steps">
@@ -216,7 +239,7 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
                             </div>
                             <button
                                 className="btn btn-primary btn-lg btn-full"
-                                onClick={() => setStep(3)}
+                                onClick={() => setStep(4)}
                             >
                                 Continue →
                             </button>
@@ -230,7 +253,7 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
                             <button
                                 id="switch-chain-btn"
                                 className="btn btn-primary btn-lg btn-full"
-                                onClick={async () => { await handleSwitchToMonad(); setStep(3); }}
+                                onClick={async () => { await handleSwitchToMonad(); setStep(4); }}
                             >
                                 Switch to Monad Testnet
                             </button>
@@ -239,8 +262,8 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
                 </div>
             )}
 
-            {/* Step 3: Submit Attestation */}
-            {step === 3 && (
+            {/* Step 4: Submit Attestation */}
+            {step === 4 && (
                 <div className="card animate-fade-in">
                     <div className="card-header">
                         <div>
@@ -276,7 +299,15 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
 
                     {attestationStatus && (
                         <div className={`alert ${attestationStatus.includes('✅') ? 'alert-success' : attestationStatus.includes('❌') || attestationStatus.includes('⚠️') ? 'alert-warning' : 'alert-info'}`}>
-                            {attestationStatus}
+                            {attestationStatus.split('\n\n').map((block, i) =>
+                                block.startsWith('BORROWER_ADDRESS') || block.startsWith('npx') ? (
+                                    <pre key={i} style={{ marginTop: 8, fontSize: '0.75rem', background: 'rgba(0,0,0,0.2)', padding: '8px 10px', borderRadius: 6, overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                                        {block}
+                                    </pre>
+                                ) : (
+                                    <span key={i} style={{ display: 'block', marginBottom: 4 }}>{block}</span>
+                                )
+                            )}
                         </div>
                     )}
 
@@ -299,5 +330,8 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
                 </div>
             )}
         </div>
+
+        <TxToast txHash={txHash} onDismiss={() => setTxHash(null)} />
+        </>
     );
 }

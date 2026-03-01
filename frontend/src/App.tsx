@@ -102,10 +102,10 @@ function App() {
             let maxLoanAmount = 0n;
             let totalLiquidity = 0n;
 
-            try { activeLoans = await lending.getActiveLoans(state.address); } catch { }
-            try { totalObligation = await lending.getOutstandingObligation(state.address); } catch { }
-            try { maxLoanAmount = await lending.maxLoanAmount(); } catch { }
-            try { totalLiquidity = await lending.totalLiquidity(); } catch { }
+            try { activeLoans = await lending.getActiveLoans(state.address); } catch (e) { console.error('getActiveLoans failed:', e); }
+            try { totalObligation = await lending.getOutstandingObligation(state.address); } catch (e) { console.error('getOutstandingObligation failed:', e); }
+            try { maxLoanAmount = await lending.maxLoanAmount(); } catch (e) { console.error('maxLoanAmount failed:', e); }
+            try { totalLiquidity = await lending.totalLiquidity(); } catch (e) { console.error('totalLiquidity failed:', e); }
 
             setState(prev => ({
                 ...prev,
@@ -126,6 +126,13 @@ function App() {
             refreshData();
         }
     }, [state.connected, refreshData]);
+
+    // Re-fetch chain data whenever the user navigates to a data-dependent tab
+    useEffect(() => {
+        if (state.connected && (tab === 'borrow' || tab === 'repay' || tab === 'dashboard')) {
+            refreshData();
+        }
+    }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Listen for account/chain changes
     useEffect(() => {
