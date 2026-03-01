@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ethers } from 'ethers';
 import { AppState } from '../App';
+import { useUnlink } from '@unlink-xyz/react';
 import {
     CONTRACTS,
     ATTESTATION_REGISTRY_ABI,
@@ -14,9 +15,22 @@ interface Props {
 }
 
 export default function OnboardingFlow({ state, connectWallet, onComplete }: Props) {
-    const [step, setStep] = useState(state.connected ? 2 : 1);
+    const { createWallet, walletExists } = useUnlink();
+    const [step, setStep] = useState(state.connected ? (walletExists ? 3 : 2) : 1);
     const [loading, setLoading] = useState(false);
     const [attestationStatus, setAttestationStatus] = useState('');
+
+    const handleCreateUnlinkWallet = async () => {
+        try {
+            setLoading(true);
+            await createWallet();
+            setStep(3);
+        } catch (err) {
+            console.error('Failed to create unlink wallet', err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleSwitchToMonad = async () => {
         try {
@@ -42,7 +56,7 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
 
     const handleConnect = async () => {
         await connectWallet();
-        setStep(2);
+        setStep(walletExists ? 3 : 2);
     };
 
     const handleSubmitAttestation = async () => {
@@ -108,10 +122,14 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
                 </div>
                 <div className={`step ${step >= 2 ? (step > 2 ? 'completed' : 'active') : ''}`}>
                     <div className="step-number">{step > 2 ? '✓' : '2'}</div>
+                    <span className="step-label">Privacy Setup</span>
+                </div>
+                <div className={`step ${step >= 3 ? (step > 3 ? 'completed' : 'active') : ''}`}>
+                    <div className="step-number">{step > 3 ? '✓' : '3'}</div>
                     <span className="step-label">Switch to Monad</span>
                 </div>
-                <div className={`step ${step >= 3 ? 'active' : ''}`}>
-                    <div className="step-number">3</div>
+                <div className={`step ${step >= 4 ? 'active' : ''}`}>
+                    <div className="step-number">4</div>
                     <span className="step-label">Submit Attestation</span>
                 </div>
             </div>
@@ -129,7 +147,7 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
                         EWA Protocol lets you access earned wages before payday. Your salary data stays
                         completely private — only cryptographic proofs live on-chain.
                     </p>
-                    <div className="alert alert-info">
+                    <div className="alert alert-info" style={{ marginBottom: 24 }}>
                         🔒 Your employer name, salary amount, and financial history are <strong>never</strong> stored on the blockchain.
                     </div>
                     <button
@@ -142,8 +160,48 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
                 </div>
             )}
 
-            {/* Step 2: Switch to Monad */}
+            {/* Step 2: Privacy Setup (Unlink) */}
             {step === 2 && (
+                <div className="card animate-fade-in">
+                    <div className="card-header">
+                        <div>
+                            <h2 className="card-title">Enable Privacy (Unlink)</h2>
+                            <p className="card-subtitle">Create a private Unlink wallet so zero-knowledge proofs can hide your loan balances.</p>
+                        </div>
+                    </div>
+
+                    {walletExists ? (
+                        <>
+                            <div className="alert alert-success" style={{ marginBottom: 24 }}>
+                                ✅ Private wallet found and loaded!
+                            </div>
+                            <button
+                                className="btn btn-primary btn-lg btn-full"
+                                onClick={() => setStep(3)}
+                            >
+                                Continue →
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: '0.9rem', lineHeight: 1.7 }}>
+                                Click below to generate a new shielded wallet that is tied only to this device.
+                            </p>
+                            <button
+                                id="create-unlink-wallet-btn"
+                                className="btn btn-primary btn-lg btn-full"
+                                onClick={handleCreateUnlinkWallet}
+                                disabled={loading}
+                            >
+                                {loading ? 'Securing...' : '🛡️ Create Private Wallet'}
+                            </button>
+                        </>
+                    )}
+                </div>
+            )}
+
+            {/* Step 3: Switch to Monad */}
+            {step === 3 && (
                 <div className="card animate-fade-in">
                     <div className="card-header">
                         <div>

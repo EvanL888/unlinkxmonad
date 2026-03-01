@@ -97,10 +97,10 @@ All schemes auto-deduct from the borrower's next payroll deposit(s) via PayrollR
 
 ### Smart Contracts (Hardhat + Solidity)
 
-#### [NEW] [hardhat.config.ts](file:///c:/Users/ryanlam/Desktop/unlinkxmonad/hardhat.config.ts)
+#### [NEW] hardhat.config.ts
 Hardhat config with Monad testnet network (chain 10143), Solidity 0.8.24.
 
-#### [NEW] [contracts/AttestationRegistry.sol](file:///c:/Users/ryanlam/Desktop/unlinkxmonad/contracts/AttestationRegistry.sol)
+#### [NEW] contracts/AttestationRegistry.sol
 - Stores attestation hashes mapped to borrower addresses
 - `registerEmployer(bytes32 employerHash)` — owner registers verified employer hashes
 - `registerAttestation(bytes32 attestationHash, bytes32 employerHash, uint256 expiry, bytes signature)` — verifies ECDSA sig from trusted provider, checks employer is registered, stores attestation with 30-day TTL
@@ -108,7 +108,7 @@ Hardhat config with Monad testnet network (chain 10143), Solidity 0.8.24.
 - `isValid(address borrower)` — checks attestation exists, not expired, and not revoked
 - Owner can update trusted provider address
 
-#### [NEW] [contracts/PayrollRouter.sol](file:///c:/Users/ryanlam/Desktop/unlinkxmonad/contracts/PayrollRouter.sol)
+#### [NEW] contracts/PayrollRouter.sol
 The core repayment mechanism. Employer (or payroll system) calls this instead of sending wages directly to the employee.
 - `registerEmployee(address employee, address lendingContract)` — owner links employee to their lending contract
 - `depositPayroll(address employee) payable` — employer sends wages; the router:
@@ -119,7 +119,7 @@ The core repayment mechanism. Employer (or payroll system) calls this instead of
 - `setNextPayday(address employee, uint256 timestamp)` — owner sets expected payday date
 - `getNextPayday(address employee) → uint256` — view helper
 
-#### [NEW] [contracts/EWALending.sol](file:///c:/Users/ryanlam/Desktop/unlinkxmonad/contracts/EWALending.sol)
+#### [NEW] contracts/EWALending.sol
 - Core lending contract; protocol-funded (owner deposits liquidity)
 - `depositLiquidity()` — owner funds the pool (payable)
 - `borrow(uint256 amount, RepaymentScheme scheme)`:
@@ -135,7 +135,7 @@ The core repayment mechanism. Employer (or payroll system) calls this instead of
 - `getLoan(uint256 loanId)` — view loan details
 - `getActiveLoans(address borrower)` — view borrower's loans
 
-#### [NEW] [contracts/ReputationTracker.sol](file:///c:/Users/ryanlam/Desktop/unlinkxmonad/contracts/ReputationTracker.sol)
+#### [NEW] contracts/ReputationTracker.sol
 - `getReputation(address borrower) → uint256` (0-100 scale)
 - `recordRepayment(address borrower, uint256 loanAmount, bool onTime)` — called by EWALending on repayment, weighted by loan size
 - `recordDefault(address borrower, uint256 loanAmount)` — called on liquidation, weighted by loan size
@@ -146,23 +146,23 @@ The core repayment mechanism. Employer (or payroll system) calls this instead of
   - `TIER_SIZE` = 1 MON (configurable), determines how quickly amount affects score
   - Capped at [0, 100]
 
-#### [NEW] [contracts/InterestCalculator.sol](file:///c:/Users/ryanlam/Desktop/unlinkxmonad/contracts/InterestCalculator.sol)
+#### [NEW]contracts/InterestCalculator.sol
 - Pure/view library for interest math
 - `calculateInterest(uint256 principal, RepaymentScheme scheme, uint256 reputation) → uint256`
 - `getInstallmentAmount(uint256 totalOwed, uint256 numInstallments) → uint256`
 - `getPeriodicObligation(Loan loan) → uint256` — returns how much should be deducted from this payroll cycle
 - Used by EWALending and PayrollRouter internally
 
-#### [NEW] [scripts/deploy.ts](file:///c:/Users/ryanlam/Desktop/unlinkxmonad/scripts/deploy.ts)
+#### [NEW] scripts/deploy.ts
 Deploys all contracts, links them, funds liquidity pool.
 
-#### [NEW] [scripts/issue-attestation.ts](file:///c:/Users/ryanlam/Desktop/unlinkxmonad/scripts/issue-attestation.ts)
+#### [NEW] scripts/issue-attestation.ts
 Simulates attestation provider: signs attestation for a given borrower address, outputs the data needed to call `registerAttestation()`.
 
-#### [NEW] [scripts/simulate-payroll.ts](file:///c:/Users/ryanlam/Desktop/unlinkxmonad/scripts/simulate-payroll.ts)
+#### [NEW] scripts/simulate-payroll.ts
 Simulates an employer depositing payroll through the `PayrollRouter`. Sets payday, then calls `depositPayroll()` with a specified amount. Prints the split (deduction vs. remainder forwarded to borrower).
 
-#### [NEW] [test/EWALending.test.ts](file:///c:/Users/ryanlam/Desktop/unlinkxmonad/test/EWALending.test.ts)
+#### [NEW] test/EWALending.test.ts
 Hardhat tests covering:
 - Attestation registration + validation
 - Borrow with valid attestation
@@ -177,54 +177,54 @@ Hardhat tests covering:
 
 ### Frontend (React + Vite + Unlink SDK)
 
-#### [NEW] [frontend/package.json](file:///c:/Users/ryanlam/Desktop/unlinkxmonad/frontend/package.json)
+#### [NEW] frontend/package.json
 React 18 + Vite + TypeScript. Dependencies: `@unlink-xyz/react@canary`, `@unlink-xyz/core`, `wagmi`, `viem`, `ethers`.
 
-#### [NEW] [frontend/src/main.tsx](file:///c:/Users/ryanlam/Desktop/unlinkxmonad/frontend/src/main.tsx)
+#### [NEW] frontend/src/main.tsx
 App entry with UnlinkProvider + WagmiProvider wrapping.
 
-#### [NEW] [frontend/src/App.tsx](file:///c:/Users/ryanlam/Desktop/unlinkxmonad/frontend/src/App.tsx)
+#### [NEW] frontend/src/App.tsx
 Route layout: Onboarding → Dashboard → Borrow → Repay.
 
-#### [NEW] [frontend/src/config/contracts.ts](file:///c:/Users/ryanlam/Desktop/unlinkxmonad/frontend/src/config/contracts.ts)
+#### [NEW] frontend/src/config/contracts.ts
 Contract addresses + ABIs after deployment.
 
-#### [NEW] [frontend/src/components/OnboardingFlow.tsx](file:///c:/Users/ryanlam/Desktop/unlinkxmonad/frontend/src/components/OnboardingFlow.tsx)
+#### [NEW] frontend/src/components/OnboardingFlow.tsx
 - Step 1: Connect MetaMask
 - Step 2: Create Unlink private wallet (`useUnlink().createWallet()`)
 - Step 3: Submit attestation (calls `AttestationRegistry.registerAttestation()`)
 
-#### [NEW] [frontend/src/components/BorrowFlow.tsx](file:///c:/Users/ryanlam/Desktop/unlinkxmonad/frontend/src/components/BorrowFlow.tsx)
+#### [NEW] frontend/src/components/BorrowFlow.tsx
 - Select amount slider (up to max)
 - Select repayment scheme (radios with fee preview showing payroll deduction amounts)
 - Shows "Your next paycheck deduction" preview before confirming
 - Submit → calls `EWALending.borrow()` → MON sent directly to borrower's wallet
 
-#### [NEW] [frontend/src/components/RepayFlow.tsx](file:///c:/Users/ryanlam/Desktop/unlinkxmonad/frontend/src/components/RepayFlow.tsx)
+#### [NEW] frontend/src/components/RepayFlow.tsx
 - Shows active loans with next payroll deduction preview
 - **Primary path**: "Auto-deduct on payday" — shows upcoming deduction amount and date, no action needed from borrower
 - **Optional**: "Repay Early" button uses `useInteract()` → `unlink.interact({ spend: [MON], calls: [repay(loanId)], receive: [] })` — privately repays before payday for a reputation bonus
 
-#### [NEW] [frontend/src/components/Dashboard.tsx](file:///c:/Users/ryanlam/Desktop/unlinkxmonad/frontend/src/components/Dashboard.tsx)
+#### [NEW] frontend/src/components/Dashboard.tsx
 - Reputation score display
 - Active loans table
 - Repayment history
 - Privacy wallet balance (via `useUnlinkBalance`)
 
-#### [NEW] [frontend/src/index.css](file:///c:/Users/ryanlam/Desktop/unlinkxmonad/frontend/src/index.css)
+#### [NEW] frontend/src/index.css
 Premium dark-mode design system with gradients, glassmorphism, and micro-animations.
 
 ---
 
 ### Project Root Files
 
-#### [NEW] [package.json](file:///c:/Users/ryanlam/Desktop/unlinkxmonad/package.json)
+#### [NEW] package.json
 Root package.json for Hardhat project.
 
-#### [NEW] [.env.example](file:///c:/Users/ryanlam/Desktop/unlinkxmonad/.env.example)
+#### [NEW] .env.example
 Template for `PRIVATE_KEY`, `MONAD_RPC_URL`, `ATTESTATION_PROVIDER_KEY`.
 
-#### [NEW] [README.md](file:///c:/Users/ryanlam/Desktop/unlinkxmonad/README.md)
+#### [NEW] README.md
 Project documentation with setup, architecture, and demo instructions.
 
 ---

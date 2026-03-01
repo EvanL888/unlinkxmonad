@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ethers } from 'ethers';
 import { AppState } from '../App';
+import { useInteract, toCall } from '@unlink-xyz/react';
 import {
     CONTRACTS,
     EWA_LENDING_ABI,
@@ -17,6 +18,8 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
     const [schemeId, setSchemeId] = useState(0);
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState('');
+
+    const { interact, isPending } = useInteract();
 
     const maxLoan = state.maxLoanAmount > 0n
         ? Number(ethers.formatEther(state.maxLoanAmount))
@@ -48,24 +51,33 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
     const handleBorrow = async () => {
         if (!state.signer) return;
         setLoading(true);
-        setStatus('Submitting borrow request...');
+        setStatus('Submitting private borrow request via Unlink...');
 
         try {
-            const lending = new ethers.Contract(
-                CONTRACTS.ewaLending,
-                EWA_LENDING_ABI,
-                state.signer
-            );
-
             const amountWei = ethers.parseEther(amount.toString());
-            const tx = await lending.borrow(amountWei, schemeId);
-            setStatus('Waiting for confirmation...');
-            await tx.wait();
 
-            setStatus('✅ Loan approved! MON sent to your wallet.');
-            setTimeout(() => onBorrowed(), 2000);
+            // Generate the exact calldata for public borrow(uint256,uint8) call
+            const lendingInterface = new ethers.Interface(EWA_LENDING_ABI);
+            const calldata = lendingInterface.encodeFunctionData('borrow', [amountWei, schemeId]);
+
+            // Interact: execute public borrow(), receive funds directly to private wallet
+            const result = await interact({
+                spend: [], // not spending anything
+                calls: [
+                    toCall({
+                        to: CONTRACTS.ewaLending,
+                        value: 0n,
+                        data: calldata
+                    })
+                ],
+                receive: [{ token: '0x0', minAmount: amountWei }] // receive the loan privately
+            });
+
+            setStatus(`✅ Loan silently approved! Shielded Relay ID: ${result.relayId}`);
+            setTimeout(() => onBorrowed(), 3000);
         } catch (err: any) {
-            setStatus('❌ ' + (err.reason || err.message));
+            console.error(err);
+            setStatus('❌ ' + (err.reason || err.message || err.toString()));
         } finally {
             setLoading(false);
         }
@@ -100,27 +112,34 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
                         <span style={{
                             fontSize: '1.5rem',
                             fontWeight: 800,
-                            background: 'var(--gradient-primary)',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
+                            ...(amount > maxLoan ? { color: 'var(--accent-red)' } : {
+                                background: 'var(--gradient-primary)',
+                                WebkitBackgroundClip: 'text',
+                                WebkitTextFillColor: 'transparent',
+                            })
                         }}>
-                            {amount.toFixed(1)} MON
+                            {amount.toFixed(2)} MON
                         </span>
                     </div>
                     <input
                         type="range"
                         id="loan-amount-slider"
-                        min={0.1}
-                        max={actualMax}
-                        step={0.1}
+                        min={0.01}
+                        max={liquidity > 0 ? liquidity : 0.01}
+                        step={0.01}
                         value={amount}
                         onChange={e => setAmount(Number(e.target.value))}
                         style={{ width: '100%', marginBottom: 8 }}
                     />
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        <span>0.1 MON</span>
-                        <span>Max: {actualMax.toFixed(1)} MON</span>
+                        <span>0.01 MON</span>
+                        <span>Max: {liquidity.toFixed(2)} MON</span>
                     </div>
+                    {amount > maxLoan && (
+                        <div style={{ color: 'var(--accent-red)', fontSize: '0.8rem', marginTop: 4 }}>
+                            Exceeds your allowed limit of {maxLoan.toFixed(2)} MON.
+                        </div>
+                    )}
                 </div>
 
                 {/* Scheme selection */}
@@ -189,9 +208,9 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
                     id="borrow-confirm-btn"
                     className="btn btn-primary btn-lg btn-full"
                     onClick={handleBorrow}
-                    disabled={loading || amount <= 0}
+                    disabled={loading || amount <= 0 || amount > maxLoan}
                 >
-                    {loading ? 'Processing...' : `Borrow ${amount.toFixed(1)} MON`}
+                    {loading ? 'Processing...' : `Borrow ${amount.toFixed(2)} MON`}
                 </button>
             </div>
         </div>

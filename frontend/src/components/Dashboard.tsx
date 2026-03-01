@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import { AppState } from '../App';
+import { useUnlinkBalances } from '@unlink-xyz/react';
 
 interface Props {
     state: AppState;
@@ -11,6 +12,7 @@ const STATUS_NAMES = ['Active', 'Repaid', 'Defaulted'];
 const STATUS_CLASSES = ['status-active', 'status-repaid', 'status-defaulted'];
 
 export default function Dashboard({ state, refreshData }: Props) {
+    const { balances, ready: unlinkReady } = useUnlinkBalances();
     if (!state.connected) {
         return (
             <div className="card animate-slide-up">
@@ -100,26 +102,45 @@ export default function Dashboard({ state, refreshData }: Props) {
                     </div>
                 </div>
 
-                <div className="card">
-                    <h3 className="card-title" style={{ marginBottom: 20 }}>🔒 Privacy Status</h3>
-                    <div style={{ display: 'grid', gap: 12 }}>
-                        <div className="privacy-shield" style={{ justifyContent: 'flex-start' }}>
-                            ✅ Salary data — Not on-chain
-                        </div>
-                        <div className="privacy-shield" style={{ justifyContent: 'flex-start' }}>
-                            ✅ Employer identity — Hashed only
-                        </div>
-                        <div className="privacy-shield" style={{ justifyContent: 'flex-start' }}>
-                            ✅ Financial history — Private via Unlink
-                        </div>
-                        <div className="privacy-shield" style={{ justifyContent: 'flex-start' }}>
-                            ✅ Payroll amounts — Hidden in router
-                        </div>
+                <div style={{ display: 'grid', gap: 24 }}>
+                    <div className="card">
+                        <h3 className="card-title" style={{ marginBottom: 20 }}>💰 Privacy Wallet Balance</h3>
+                        {unlinkReady ? (
+                            <div style={{ padding: '16px', background: 'var(--bg-card-hover)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Shielded MON</div>
+                                <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--accent-green)' }}>
+                                    {balances && balances['0x0'] ? Number(ethers.formatEther(balances['0x0'])).toFixed(4) : '0.0000'}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="empty-state" style={{ padding: 16 }}>
+                                <div className="emoji">🔒</div>
+                                <p>Unlink SDK loading...</p>
+                            </div>
+                        )}
                     </div>
-                    <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 16, lineHeight: 1.6 }}>
-                        Your attestation proves you're eligible without revealing
-                        how much you earn, who you work for, or your borrowing history.
-                    </p>
+
+                    <div className="card">
+                        <h3 className="card-title" style={{ marginBottom: 20 }}>🔒 Privacy Status</h3>
+                        <div style={{ display: 'grid', gap: 12 }}>
+                            <div className="privacy-shield" style={{ justifyContent: 'flex-start' }}>
+                                ✅ Salary data — Not on-chain
+                            </div>
+                            <div className="privacy-shield" style={{ justifyContent: 'flex-start' }}>
+                                ✅ Employer identity — Hashed only
+                            </div>
+                            <div className="privacy-shield" style={{ justifyContent: 'flex-start' }}>
+                                ✅ Financial history — Private via Unlink
+                            </div>
+                            <div className="privacy-shield" style={{ justifyContent: 'flex-start' }}>
+                                ✅ Payroll amounts — Hidden in router
+                            </div>
+                        </div>
+                        <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 16, lineHeight: 1.6 }}>
+                            Your attestation proves you're eligible without revealing
+                            how much you earn, who you work for, or your borrowing history.
+                        </p>
+                    </div>
                 </div>
             </div>
 

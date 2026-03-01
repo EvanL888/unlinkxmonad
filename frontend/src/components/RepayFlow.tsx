@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ethers } from 'ethers';
 import { AppState } from '../App';
 import { CONTRACTS, EWA_LENDING_ABI } from '../config/contracts';
+import { useInteract, toCall, formatAmount } from '@unlink-xyz/react';
 
 interface Props {
     state: AppState;
@@ -18,30 +19,44 @@ export default function RepayFlow({ state, onRepaid }: Props) {
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState('');
 
+    // Unlink hook for atomic shielded -> public -> shielded calls
+    const { interact, isPending } = useInteract();
+
     const handleRepay = async (loanId: number) => {
         if (!state.signer || !repayAmount) return;
         setLoading(true);
-        setStatus('Initiating early repayment...');
+        setStatus('Initiating early repayment privately via Unlink...');
 
         try {
-            const lending = new ethers.Contract(
-                CONTRACTS.ewaLending,
-                EWA_LENDING_ABI,
-                state.signer
-            );
+            const amountWei = ethers.parseEther(repayAmount);
 
-            const tx = await lending.repay(loanId, {
-                value: ethers.parseEther(repayAmount),
+            // Build the exact calldata for the contract's repay(uint256)
+            const lendingInterface = new ethers.Interface(EWA_LENDING_ABI);
+            const calldata = lendingInterface.encodeFunctionData('repay', [loanId]);
+
+            // Execute the Unlink interaction:
+            // 1. Spend `amountWei` of MON (token 0x0) from private balance
+            // 2. Call the lending contract with the public repay payload and the unshielded value
+            // 3. Receive any unused unshielded value back into the private balance
+            const result = await interact({
+                spend: [{ token: '0x0', amount: amountWei }],
+                calls: [
+                    toCall({
+                        to: CONTRACTS.ewaLending,
+                        value: amountWei,
+                        data: calldata
+                    })
+                ],
+                receive: [{ token: '0x0', minAmount: 0n }]
             });
-            setStatus('Waiting for confirmation...');
-            await tx.wait();
 
-            setStatus('✅ Repayment successful! Reputation bonus applied.');
+            setStatus(`✅ Repayment successful! Relay ID: ${result.relayId}`);
             setSelectedLoan(null);
             setRepayAmount('');
-            setTimeout(() => { onRepaid(); setStatus(''); }, 2000);
+            setTimeout(() => { onRepaid(); setStatus(''); }, 3000);
         } catch (err: any) {
-            setStatus('❌ ' + (err.reason || err.message));
+            console.error(err);
+            setStatus('❌ ' + (err.reason || err.message || err.toString()));
         } finally {
             setLoading(false);
         }

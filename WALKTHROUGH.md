@@ -34,8 +34,9 @@ Privacy-preserving Earned Wage Access protocol on Monad × Unlink. Borrowers pro
 ```
 
 ### Frontend (React + Vite + TypeScript)
-- **Build**: ✅ Successful (440 KB JS, 12 KB CSS)
+- **Build**: ✅ Successful
 - **Components**: OnboardingFlow, BorrowFlow, RepayFlow, Dashboard
+- **Unlink SDK**: Implemented `UnlinkProvider`, `useInteract`, and `useUnlink` for local private wallet generation and fully shielded borrowing/repayments.
 - Premium dark-mode with glassmorphism, mesh gradients, SVG reputation meter
 
 ### Root Files
