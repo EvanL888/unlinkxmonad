@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
-import { AppState } from '../App';
+import type { AppState } from '../App';
 import {
     CONTRACTS,
     PAYROLL_ROUTER_ABI,
@@ -103,8 +103,22 @@ export default function AdminPanel({ state }: Props) {
             const tx = await router.registerEmployee(employeeAddr, CONTRACTS.ewaLending);
             setStatus('⏳ Registering employee...');
             await tx.wait();
+
+            const balance = await state.provider!.getBalance(state.address);
+
+            // Lowered gas sponsorship to 0.005 MON for testnet faucet compatibility
+            if (balance >= ethers.parseEther('0.005')) {
+                setStatus('⏳ Sponsoring gas for employee (0.005 MON)...');
+                const gasTx = await state.signer.sendTransaction({
+                    to: employeeAddr,
+                    value: ethers.parseEther('0.005')
+                });
+                await gasTx.wait();
+                setStatus(`✅ Employee ${employeeAddr.slice(0, 6)}...${employeeAddr.slice(-4)} registered and sponsored with 0.005 MON for gas!`);
+            } else {
+                setStatus(`✅ Employee ${employeeAddr.slice(0, 6)}...${employeeAddr.slice(-4)} registered! (Skipped gas sponsor due to low balance)`);
+            }
             setTxHash(tx.hash);
-            setStatus(`✅ Employee ${employeeAddr.slice(0, 6)}...${employeeAddr.slice(-4)} registered!`);
         } catch (err: any) {
             console.error(err);
             setStatus('❌ ' + (err.reason || err.message || String(err)));
@@ -189,9 +203,23 @@ export default function AdminPanel({ state }: Props) {
                     `ewa_pending_attestation_${attestBorrower}`,
                     JSON.stringify(attestData)
                 );
-                setStatus(
-                    `✅ Attestation signed! Data saved for borrower ${attestBorrower.slice(0, 6)}...${attestBorrower.slice(-4)} to claim on-chain.`
-                );
+
+                const balance = await state.provider!.getBalance(state.address);
+                if (balance >= ethers.parseEther('0.005')) {
+                    setStatus('⏳ Sponsoring gas for borrower (0.005 MON)...');
+                    const gasTx = await state.signer.sendTransaction({
+                        to: attestBorrower,
+                        value: ethers.parseEther('0.005')
+                    });
+                    await gasTx.wait();
+                    setStatus(
+                        `✅ Attestation signed & 0.005 MON sent! Borrower ${attestBorrower.slice(0, 6)}...${attestBorrower.slice(-4)} can now claim on-chain.`
+                    );
+                } else {
+                    setStatus(
+                        `✅ Attestation signed! (Skipped gas sponsor due to low balance). Borrower ${attestBorrower.slice(0, 6)}...${attestBorrower.slice(-4)} can now claim on-chain.`
+                    );
+                }
             }
         } catch (err: any) {
             console.error(err);

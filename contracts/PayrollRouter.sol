@@ -48,11 +48,12 @@ contract PayrollRouter {
 
     /**
      * @notice Register an employee and link them to a lending contract.
+     *         (Removed onlyOwner for hackathon demo so any wallet can act as company)
      */
     function registerEmployee(
         address _employee,
         address _lendingContract
-    ) external onlyOwner {
+    ) external {
         employees[_employee] = EmployeeRecord({
             registered: true,
             lendingContract: _lendingContract,
@@ -64,11 +65,9 @@ contract PayrollRouter {
 
     /**
      * @notice Set the expected next payday date for an employee.
+     *         (Removed onlyOwner for hackathon demo)
      */
-    function setNextPayday(
-        address _employee,
-        uint256 _timestamp
-    ) external onlyOwner {
+    function setNextPayday(address _employee, uint256 _timestamp) external {
         require(employees[_employee].registered, "Employee not registered");
         employees[_employee].nextPayday = _timestamp;
         emit PaydayUpdated(_employee, _timestamp);

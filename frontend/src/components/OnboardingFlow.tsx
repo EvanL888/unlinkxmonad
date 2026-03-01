@@ -82,33 +82,46 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
                 return;
             }
 
-            // Not yet registered — attempt to register with pre-signed attestation data
-            setAttestationStatus('Preparing attestation...');
+            // Check if there is a pending attestation from the Admin Panel
+            const stored = localStorage.getItem(`ewa_pending_attestation_${address}`);
+            let signature = '0x' + '00'.repeat(65);
+            let attestationHash = ethers.ZeroHash;
+            let employerHash = ethers.ZeroHash;
+            let expiry = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
 
-            const attestationData = {
-                employed: true,
-                salaryAboveThreshold: true,
-                paySchedule: 'biweekly',
-                verifiedAt: Math.floor(Date.now() / 1000),
-            };
-            const attestationHash = ethers.keccak256(
-                ethers.toUtf8Bytes(JSON.stringify(attestationData))
-            );
-            const employerHash = ethers.keccak256(ethers.toUtf8Bytes('Acme Corp'));
-            const expiry = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
+            if (stored) {
+                const data = JSON.parse(stored);
+                attestationHash = data.attestationHash;
+                employerHash = data.employerHash;
+                expiry = data.expiry;
+                signature = data.signature;
+            } else {
+                // Mock fallback that usually fails unless valid data is present
+                const fallbackData = {
+                    employed: true,
+                    salaryAboveThreshold: true,
+                    paySchedule: 'biweekly',
+                    verifiedAt: Math.floor(Date.now() / 1000),
+                };
+                attestationHash = ethers.keccak256(
+                    ethers.toUtf8Bytes(JSON.stringify(fallbackData))
+                );
+                employerHash = ethers.keccak256(ethers.toUtf8Bytes('Acme Corp'));
+            }
 
             setAttestationStatus('Submitting to blockchain...');
 
-            // Signature must come from the trusted provider (deployer key).
-            // Run the issue-attestation script once to register your address, then this
-            // check above (isValid) will pass automatically on subsequent visits.
+            // Submit the attestation to the registry using the employer's signature
             const tx = await registry.registerAttestation(
                 attestationHash,
                 employerHash,
                 expiry,
-                '0x' + '00'.repeat(65) // Placeholder — see instructions below
+                signature
             );
             await tx.wait();
+
+            // Clear the pending attestation from local storage
+            localStorage.removeItem(`ewa_pending_attestation_${address}`);
 
             setTxHash(tx.hash);
             setAttestationStatus('✅ Attestation registered on-chain!');
@@ -118,13 +131,14 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
             if (
                 err.message?.includes('Invalid attestation') ||
                 err.message?.includes('invalid signature') ||
-                err.reason?.includes('Invalid attestation')
+                err.message?.includes('Invalid signature lengths') ||
+                err.reason?.includes('Invalid attestation') ||
+                err.reason?.includes('Invalid signature')
             ) {
                 setAttestationStatus(
                     `⚠️ Attestation not yet issued for your wallet.\n\n` +
-                    `Run this command in the project terminal:\n\n` +
-                    `BORROWER_ADDRESS=${address} npx hardhat run scripts/issue-attestation.ts --network monad\n\n` +
-                    `Then click "Submit Attestation Proof" again.`
+                    `Please ask your employer to issue one from the /admin panel.\n\n` +
+                    `(If testing, use another metamask account to go to /admin and issue an attestation for this address: ${address})`
                 );
             } else {
                 setAttestationStatus('❌ Error: ' + (err.reason || err.message));
@@ -294,7 +308,7 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
 
                         <div className="alert alert-info">
                             ℹ️ In production, this connects to <strong>Plaid / Argyle</strong> to verify your payroll.
-                            For the hackathon, attestations are pre-signed by the <code>issue-attestation</code> script.
+                            For the hackathon, please use the <strong>/admin</strong> panel to map your employer's signature to this wallet.
                         </div>
 
                         {attestationStatus && (

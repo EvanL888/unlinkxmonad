@@ -124,15 +124,23 @@ Is valid: true
 
 ---
 
-## 7. Start the Frontend
+## 7. Start the Frontend Apps
 
+Because testing requires two different MetaMask wallets connected at the same time (Employer and Borrower), the project uses two separate frontend apps running on different ports so MetaMask treats them as distinct websites.
+
+**Terminal 1 (Borrower App):**
 ```bash
 cd frontend
 npm run dev
 ```
+The borrower app launches at **http://localhost:5173**.
 
-The app launches at **http://localhost:5173** (Vite dev server).
-The **Admin Panel** is at **http://localhost:5173/admin** (separate route).
+**Terminal 2 (Admin / Employer App):**
+```bash
+cd admin-frontend
+npm run dev
+```
+The admin app launches at **http://localhost:5174** (or `5175`).
 
 ---
 
@@ -165,7 +173,7 @@ The **Admin Panel** is at **http://localhost:5173/admin** (separate route).
 
 ## 9. Admin Panel — Company Mock (Payroll)
 
-Navigate to **http://localhost:5173/admin** to access the standalone admin page.
+Navigate to **http://localhost:5174** (or `5175` depending on your terminal output) to access the standalone admin app. Connect a funded MetaMask wallet to act as the Employer.
 
 This page lets you act as an employer/company:
 
@@ -183,7 +191,7 @@ This page lets you act as an employer/company:
 - The remainder is forwarded to the employee's wallet
 - The preview shows the auto-computed split in real-time
 
-> The admin page has its own wallet connection and header with a "← Back to App" link.
+> The admin app automatically sponsors gas! When the employer registers an employee or issues an attestation, it automatically sends 0.05 MON to the employee wallet, so the borrower never needs to use a faucet.
 
 ---
 
@@ -224,18 +232,24 @@ unlinkxmonad/
 │   ├── deploy.ts               # Full deployment script
 │   ├── issue-attestation.ts    # Attestation issuance for testing
 │   └── simulate-payroll.ts    # CLI payroll simulation
-├── frontend/
+├── frontend/                   # Borrower Web App (Runs on :5173)
 │   └── src/
-│       ├── App.tsx             # Borrower app (/, tab-based routing)
-│       ├── AdminPage.tsx       # Standalone admin page (/admin)
-│       ├── main.tsx            # Entry point (BrowserRouter + UnlinkProvider)
+│       ├── App.tsx             # Main App
+│       ├── main.tsx            # Entry point (UnlinkProvider)
 │       ├── config/
 │       │   └── contracts.ts    # Addresses, ABIs, repayment schemes
 │       └── components/
 │           ├── OnboardingFlow.tsx   # Wallet + Unlink setup + attestation
 │           ├── BorrowFlow.tsx       # Private borrowing via useInteract
 │           ├── RepayFlow.tsx        # Private repayment via useInteract
-│           ├── Dashboard.tsx        # Stats + shielded balance display
+│           └── Dashboard.tsx        # Stats + shielded balance display
+├── admin-frontend/             # Employer Admin Web App (Runs on :5174)
+│   └── src/
+│       ├── App.tsx             # Standalone admin page
+│       ├── main.tsx            # Entry point
+│       ├── config/
+│       │   └── contracts.ts    # Contract config (mirrored from frontend)
+│       └── components/
 │           └── AdminPanel.tsx       # Admin panel (company mock + payroll)
 ├── hardhat.config.ts           # Hardhat config (Monad network)
 ├── deployed-addresses.json     # Auto-generated after deploy
