@@ -109,7 +109,8 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
                 status: 0,
                 collateral: '0',
                 commitmentHash,
-                nullifierHash
+                nullifierHash,
+                txHash: tx.hash
             };
 
             const stored = localStorage.getItem(`ewa_confidential_loans_${state.address}`);
@@ -117,12 +118,14 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
             loans.push(newLoan);
             localStorage.setItem(`ewa_confidential_loans_${state.address}`, JSON.stringify(loans));
 
+            localStorage.setItem(`ewa_confidential_loans_${state.address}`, JSON.stringify(loans));
+
             setTxHash(tx.hash);
-            setStatus('✅ Loan approved and sent to your wallet!');
+            setStatus('Loan approved and sent to your wallet!');
             setTimeout(() => onBorrowed(), 3000);
         } catch (err: any) {
             console.error(err);
-            setStatus('❌ ' + (err.reason || err.message || err.toString()));
+            setStatus(err.reason || err.message || err.toString());
         } finally {
             setLoading(false);
         }
@@ -132,7 +135,6 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
         return (
             <div className="card animate-slide-up">
                 <div className="empty-state">
-                    <div className="emoji">🔗</div>
                     <p>Connect your wallet first to borrow</p>
                 </div>
             </div>
@@ -149,7 +151,7 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
                             <h2 className="card-title">Borrow Against Payroll</h2>
                             <p className="card-subtitle">Access your earned wages before payday</p>
                         </div>
-                        <span className="privacy-shield">🔒 Private</span>
+                        <span className="privacy-shield">Private</span>
                     </div>
 
                     <div style={{ marginBottom: 16 }}>
@@ -220,7 +222,7 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
 
                 {/* Preview */}
                 <div className="card card-gradient">
-                    <h3 className="card-title" style={{ marginBottom: 16 }}>📋 Paycheck Deduction Preview</h3>
+                    <h3 className="card-title" style={{ marginBottom: 16 }}>Paycheck Deduction Preview</h3>
                     <div className="preview-box">
                         <div className="preview-row">
                             <span className="label">Principal</span>
@@ -251,11 +253,11 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
                     </div>
 
                     <div className="alert alert-info" style={{ marginBottom: 16 }}>
-                        💡 Your next paycheck auto-deducts <strong>{deductionPerPayday.toFixed(4)} MON</strong> — no manual repayment needed.
+                        Your next paycheck auto-deducts <strong>{deductionPerPayday.toFixed(4)} MON</strong> — no manual repayment needed.
                     </div>
 
                     {status && (
-                        <div className={`alert ${status.includes('✅') ? 'alert-success' : status.includes('❌') ? 'alert-warning' : 'alert-info'}`}>
+                        <div className={`alert ${status.includes('approved') ? 'alert-success' : status.includes('Error') ? 'alert-warning' : 'alert-info'}`}>
                             {status}
                         </div>
                     )}

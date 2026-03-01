@@ -18,7 +18,6 @@ export default function Dashboard({ state, refreshData }: Props) {
         return (
             <div className="card animate-slide-up">
                 <div className="empty-state">
-                    <div className="emoji">📊</div>
                     <p>Connect your wallet to see your dashboard</p>
                 </div>
             </div>
@@ -110,7 +109,7 @@ export default function Dashboard({ state, refreshData }: Props) {
             {/* Reputation Meter + Privacy Status */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
                 <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', padding: 32 }}>
-                    <h3 className="card-title" style={{ marginBottom: 16 }}>🕒 Pending Payroll Settlements</h3>
+                    <h3 className="card-title" style={{ marginBottom: 16 }}>Pending Payroll Settlements</h3>
 
                     {state.activeLoans.filter((l: any) => Number(l.status) === 0).length > 0 ? (
                         <div style={{ width: '100%', overflowX: 'auto', marginTop: 16 }}>
@@ -149,7 +148,6 @@ export default function Dashboard({ state, refreshData }: Props) {
                         </div>
                     ) : (
                         <div className="empty-state" style={{ padding: '24px 0', width: '100%', minHeight: '120px' }}>
-                            <div className="emoji">✨</div>
                             <p style={{ margin: 0 }}>No upcoming settlements.<br />You are all caught up!</p>
                         </div>
                     )}
@@ -157,7 +155,7 @@ export default function Dashboard({ state, refreshData }: Props) {
 
                 {/* Outstanding Loans — right column */}
                 <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-start', padding: 32 }}>
-                    <h3 className="card-title" style={{ marginBottom: 16 }}>📌 Outstanding Loans</h3>
+                    <h3 className="card-title" style={{ marginBottom: 16 }}>Outstanding Loans</h3>
 
                     {state.activeLoans.filter((l: any) => Number(l.status) === 0).length > 0 ? (
                         <div style={{ width: '100%', overflowX: 'auto', marginTop: 16 }}>
@@ -195,7 +193,6 @@ export default function Dashboard({ state, refreshData }: Props) {
                         </div>
                     ) : (
                         <div className="empty-state" style={{ padding: '24px 0', width: '100%', minHeight: '120px' }}>
-                            <div className="emoji">🎉</div>
                             <p style={{ margin: 0 }}>No outstanding loans.<br />You're debt-free!</p>
                         </div>
                     )}
@@ -204,25 +201,42 @@ export default function Dashboard({ state, refreshData }: Props) {
 
             {/* Transaction History — full width */}
             <div className="card">
-                <h3 className="card-title" style={{ marginBottom: 16 }}>📜 Transaction History</h3>
+                <h3 className="card-title" style={{ marginBottom: 16 }}>Transaction History</h3>
 
                 {(() => {
                     // Build a unified timeline from all loans
                     const allLoans = state.allLoans || [];
-                    const events: { date: number; type: string; amount: string; rawAmount: number; detail: string; status: string; statusClass: string; balanceAfter?: string }[] = [];
+                    const events: { date: number; type: string; amount: string; rawAmount: number; detail: string; status: string; statusClass: string; hash?: string; balanceAfter?: string }[] = [];
 
                     for (const loan of allLoans) {
                         // Borrow event
                         const principalNum = Number(ethers.formatEther(loan.principal));
                         events.push({
                             date: Number(loan.createdAt) * 1000,
-                            type: '💰 Loan Issued',
+                            type: 'Loan Issued',
                             amount: `+${principalNum.toFixed(4)} MON`,
                             rawAmount: principalNum,
                             detail: `${SCHEME_NAMES[Number(loan.scheme)]} · Total owed: ${Number(ethers.formatEther(loan.totalOwed)).toFixed(4)} MON`,
                             status: STATUS_NAMES[Number(loan.status)],
                             statusClass: STATUS_CLASSES[Number(loan.status)],
+                            hash: loan.txHash
                         });
+
+                        // Add repayment events from the loan object
+                        if (loan.repayments) {
+                            for (const rep of loan.repayments) {
+                                events.push({
+                                    date: rep.date * 1000,
+                                    type: 'Manual Repayment',
+                                    amount: `-${Number(rep.amount).toFixed(4)} MON`,
+                                    rawAmount: -Number(rep.amount),
+                                    detail: `Early repayment for Loan #${Number(loan.id)}`,
+                                    status: 'Completed',
+                                    statusClass: 'status-repaid',
+                                    hash: rep.txHash
+                                });
+                            }
+                        }
                     }
 
                     // Add Payroll Events from the blockchain
@@ -233,7 +247,7 @@ export default function Dashboard({ state, refreshData }: Props) {
 
                         events.push({
                             date: pe.date,
-                            type: deducted > 0 ? '🔄 Payroll Auto-Deduction' : '💼 Payroll Deposit',
+                            type: deducted > 0 ? 'Payroll Auto-Deduction' : 'Payroll Deposit',
                             amount: `+${forwarded.toFixed(4)} MON`,
                             rawAmount: forwarded,
                             detail: deducted > 0
@@ -241,6 +255,7 @@ export default function Dashboard({ state, refreshData }: Props) {
                                 : `Employer deposited ${total.toFixed(4)} MON`,
                             status: 'Completed',
                             statusClass: 'status-repaid',
+                            hash: pe.hash
                         });
                     }
 
@@ -261,7 +276,6 @@ export default function Dashboard({ state, refreshData }: Props) {
                     if (events.length === 0) {
                         return (
                             <div className="empty-state" style={{ padding: '32px 0' }}>
-                                <div className="emoji">📝</div>
                                 <p>No transactions yet. Borrow against your payroll to get started!</p>
                             </div>
                         );
@@ -277,6 +291,7 @@ export default function Dashboard({ state, refreshData }: Props) {
                                         <th>Amount</th>
                                         <th>Balance After</th>
                                         <th>Details</th>
+                                        <th>Explorer</th>
                                         <th>Status</th>
                                     </tr>
                                 </thead>
@@ -301,6 +316,18 @@ export default function Dashboard({ state, refreshData }: Props) {
                                             </td>
                                             <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{evt.detail}</td>
                                             <td>
+                                                {evt.hash ? (
+                                                    <a
+                                                        href={`https://testnet.monadexplorer.com/tx/${evt.hash}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="explorer-link"
+                                                    >
+                                                        View ↗
+                                                    </a>
+                                                ) : '—'}
+                                            </td>
+                                            <td>
                                                 <span className={`status-badge ${evt.statusClass}`}>{evt.status}</span>
                                             </td>
                                         </tr>
@@ -315,15 +342,14 @@ export default function Dashboard({ state, refreshData }: Props) {
             {/* Loan History — all loans (active + repaid) */}
             <div className="card">
                 <div className="card-header">
-                    <h3 className="card-title">📋 Loan History</h3>
+                    <h3 className="card-title">Loan History</h3>
                     <button className="btn btn-secondary" onClick={refreshData} style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
-                        🔄 Refresh
+                        Refresh
                     </button>
                 </div>
 
                 {(state.allLoans || []).length === 0 ? (
                     <div className="empty-state">
-                        <div className="emoji">📝</div>
                         <p>No loans yet. Get started by borrowing against your payroll!</p>
                     </div>
                 ) : (
@@ -338,6 +364,7 @@ export default function Dashboard({ state, refreshData }: Props) {
                                     <th>Total Owed</th>
                                     <th>Repaid</th>
                                     <th>Scheme</th>
+                                    <th>Explorer</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
@@ -366,6 +393,18 @@ export default function Dashboard({ state, refreshData }: Props) {
                                                 {Number(ethers.formatEther(loan.totalRepaid)).toFixed(4)}
                                             </td>
                                             <td>{SCHEME_NAMES[Number(loan.scheme)]}</td>
+                                            <td>
+                                                {loan.txHash ? (
+                                                    <a
+                                                        href={`https://testnet.monadexplorer.com/tx/${loan.txHash}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="explorer-link"
+                                                    >
+                                                        View ↗
+                                                    </a>
+                                                ) : '—'}
+                                            </td>
                                             <td>
                                                 <span className={`status-badge ${STATUS_CLASSES[Number(loan.status)]}`}>
                                                     {STATUS_NAMES[Number(loan.status)]}

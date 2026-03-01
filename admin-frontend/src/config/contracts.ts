@@ -1,5 +1,5 @@
 /**
- * Contract configuration — addresses and ABIs for deployed EWA Protocol contracts.
+ * Contract configuration — addresses and ABIs for deployed Payday contracts.
  * Update addresses after running `npx hardhat run scripts/deploy.ts --network monad`
  */
 

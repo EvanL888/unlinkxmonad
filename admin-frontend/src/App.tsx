@@ -70,7 +70,7 @@ export default function App() {
       {/* Admin Header */}
       <header className="app-header">
         <div className="app-logo">
-          <h1>EWA Protocol</h1>
+          <h1>Payday</h1>
           <span className="admin-badge">Admin Panel</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

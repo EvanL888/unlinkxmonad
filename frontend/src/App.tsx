@@ -33,6 +33,7 @@ export interface AppState {
 
 function App() {
     const [tab, setTab] = useState<Tab>('onboarding');
+    const [isConnecting, setIsConnecting] = useState(false);
     const [state, setState] = useState<AppState>({
         provider: null,
         signer: null,
@@ -55,6 +56,7 @@ function App() {
             return;
         }
         try {
+            setIsConnecting(true);
             const provider = new ethers.BrowserProvider((window as any).ethereum);
             await provider.send('eth_requestAccounts', []);
             const signer = await provider.getSigner();
@@ -71,6 +73,8 @@ function App() {
             }));
         } catch (err) {
             console.error('Failed to connect:', err);
+        } finally {
+            setIsConnecting(false);
         }
     }, []);
 
@@ -248,6 +252,13 @@ function App() {
         }
     }, [state.connected, refreshData]);
 
+    // Smart Navigation: If already onboarded, default to Dashboard
+    useEffect(() => {
+        if (state.connected && state.hasAttestation && tab === 'onboarding') {
+            setTab('dashboard');
+        }
+    }, [state.connected, state.hasAttestation, tab]);
+
     // Re-fetch chain data whenever the user navigates to a data-dependent tab
     useEffect(() => {
         if (state.connected && (tab === 'borrow' || tab === 'repay' || tab === 'dashboard')) {
@@ -273,10 +284,10 @@ function App() {
     }, [connectWallet]);
 
     const tabs: { id: Tab; label: string }[] = [
-        { id: 'onboarding', label: '🚀 Onboard' },
-        { id: 'dashboard', label: '📊 Dashboard' },
-        { id: 'borrow', label: '💰 Borrow' },
-        { id: 'repay', label: '🔄 Repay' },
+        { id: 'onboarding', label: 'Onboard' },
+        { id: 'dashboard', label: 'Dashboard' },
+        { id: 'borrow', label: 'Borrow' },
+        { id: 'repay', label: 'Repay' },
     ];
 
     return (
@@ -284,7 +295,7 @@ function App() {
             {/* Header */}
             <header className="app-header">
                 <div className="app-logo">
-                    <h1>EWA Protocol</h1>
+                    <h1>Payday</h1>
                     <span className="badge">Monad × Unlink</span>
                 </div>
                 {state.connected ? (
@@ -323,6 +334,7 @@ function App() {
                 {tab === 'onboarding' && (
                     <OnboardingFlow
                         state={state}
+                        isConnecting={isConnecting}
                         connectWallet={connectWallet}
                         onComplete={() => { refreshData(); setTab('dashboard'); }}
                     />

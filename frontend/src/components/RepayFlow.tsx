@@ -47,6 +47,7 @@ export default function RepayFlow({ state, onRepaid }: Props) {
 
             // 3. Execute the private Relayer transaction
             const tx = await lending.repayConfidential(
+                state.address,
                 loan.nullifierHash,
                 mockZkProof,
                 { value: amountWei }
@@ -65,18 +66,25 @@ export default function RepayFlow({ state, onRepaid }: Props) {
                     if (newRepaid >= BigInt(l.totalOwed)) {
                         l.status = 1; // Repaid
                     }
+                    // Persist repayment history
+                    if (!l.repayments) l.repayments = [];
+                    l.repayments.push({
+                        amount: repayAmount,
+                        txHash: tx.hash,
+                        date: Math.floor(Date.now() / 1000)
+                    });
                     localStorage.setItem(`ewa_confidential_loans_${state.address}`, JSON.stringify(loans));
                 }
             }
 
             setTxHash(tx.hash);
-            setStatus(`✅ Repayment successful! Tx: ${tx.hash}`);
+            setStatus(`Repayment successful!`);
             setSelectedLoan(null);
             setRepayAmount('');
             setTimeout(() => { onRepaid(); setStatus(''); }, 3000);
         } catch (err: any) {
             console.error(err);
-            setStatus('❌ ' + (err.reason || err.message || err.toString()));
+            setStatus(err.reason || err.message || err.toString());
         } finally {
             setLoading(false);
         }
@@ -86,7 +94,6 @@ export default function RepayFlow({ state, onRepaid }: Props) {
         return (
             <div className="card animate-slide-up">
                 <div className="empty-state">
-                    <div className="emoji">🔗</div>
                     <p>Connect your wallet to view repayment options</p>
                 </div>
             </div>
@@ -108,7 +115,7 @@ export default function RepayFlow({ state, onRepaid }: Props) {
                     </div>
 
                     <div className="alert alert-success">
-                        ✅ <strong>Auto-deduction active.</strong> Your next payroll deposit through
+                        <strong>Auto-deduction active.</strong> Your next payroll deposit through
                         PayrollRouter will automatically repay your outstanding loans. No manual action required.
                     </div>
 
@@ -141,7 +148,6 @@ export default function RepayFlow({ state, onRepaid }: Props) {
 
                     {activeLoans.length === 0 ? (
                         <div className="empty-state">
-                            <div className="emoji">🎉</div>
                             <p>No active loans! You're all clear.</p>
                         </div>
                     ) : (
@@ -239,7 +245,7 @@ export default function RepayFlow({ state, onRepaid }: Props) {
                 </div>
 
                 {status && (
-                    <div className={`alert ${status.includes('✅') ? 'alert-success' : 'alert-warning'}`}>
+                    <div className={`alert ${status.includes('successful') ? 'alert-success' : 'alert-warning'}`}>
                         {status}
                     </div>
                 )}
@@ -247,7 +253,7 @@ export default function RepayFlow({ state, onRepaid }: Props) {
                 {/* Privacy note */}
                 <div className="card" style={{ padding: 20 }}>
                     <div className="privacy-shield" style={{ display: 'flex', width: 'fit-content' }}>
-                        🔒 Early repayment via Unlink makes the repayment amount invisible on-chain
+                        Early repayment via Unlink makes the repayment amount invisible on-chain
                     </div>
                     <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: 8 }}>
                         In production, the "Repay Early" button uses Unlink's <code>interact()</code> to privately

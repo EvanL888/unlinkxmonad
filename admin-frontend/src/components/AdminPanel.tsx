@@ -92,27 +92,27 @@ export default function AdminPanel({ state }: Props) {
         try {
             const router = new ethers.Contract(CONTRACTS.payrollRouter, PAYROLL_ROUTER_ABI, state.signer);
             const tx = await router.registerEmployee(employeeAddr, CONTRACTS.ewaLending);
-            setStatus('⏳ Registering employee...');
+            setStatus('Registering employee...');
             await tx.wait();
 
             const balance = await state.provider!.getBalance(state.address);
 
             // Increased gas sponsorship to 1.0 MON for full testing
             if (balance >= ethers.parseEther('1.0')) {
-                setStatus('⏳ Sponsoring initial funds for employee (1.0 MON)...');
+                setStatus('Sponsoring initial funds for employee (1.0 MON)...');
                 const gasTx = await state.signer.sendTransaction({
                     to: employeeAddr,
                     value: ethers.parseEther('1.0')
                 });
                 await gasTx.wait();
-                setStatus(`✅ Employee ${employeeAddr.slice(0, 6)}...${employeeAddr.slice(-4)} registered and sponsored with 1.0 MON!`);
+                setStatus(`Employee ${employeeAddr.slice(0, 6)}...${employeeAddr.slice(-4)} registered and sponsored with 1.0 MON!`);
             } else {
-                setStatus(`✅ Employee ${employeeAddr.slice(0, 6)}...${employeeAddr.slice(-4)} registered! (Skipped initial funding due to low balance)`);
+                setStatus(`Employee ${employeeAddr.slice(0, 6)}...${employeeAddr.slice(-4)} registered! (Skipped initial funding due to low balance)`);
             }
             setTxHash(tx.hash);
         } catch (err: any) {
             console.error(err);
-            setStatus('❌ ' + (err.reason || err.message || String(err)));
+            setStatus(err.reason || err.message || String(err));
         } finally {
             setLoading('');
         }
@@ -148,7 +148,7 @@ export default function AdminPanel({ state }: Props) {
             );
             const signature = await state.signer.signMessage(ethers.getBytes(messageHash));
 
-            setStatus('⏳ Registering attestation on-chain...');
+            setStatus('Registering attestation on-chain...');
 
             // First ensure employer is registered
             const attestReg = new ethers.Contract(
@@ -180,7 +180,7 @@ export default function AdminPanel({ state }: Props) {
                 );
                 await tx.wait();
                 setTxHash(tx.hash);
-                setStatus('✅ Attestation registered on-chain! Borrower is now eligible to borrow.');
+                setStatus('Attestation registered on-chain! Borrower is now eligible to borrow.');
             } else {
                 // Store attestation data so borrower can use it
                 const attestData = {
@@ -204,24 +204,24 @@ export default function AdminPanel({ state }: Props) {
 
                 const balance = await state.provider!.getBalance(state.address);
                 if (balance >= ethers.parseEther('1.0')) {
-                    setStatus('⏳ Sponsoring initial funds for borrower (1.0 MON)...');
+                    setStatus('Sponsoring initial funds for borrower (1.0 MON)...');
                     const gasTx = await state.signer.sendTransaction({
                         to: attestBorrower,
                         value: ethers.parseEther('1.0')
                     });
                     await gasTx.wait();
                     setStatus(
-                        `✅ Attestation signed & 1.0 MON sent! Borrower ${attestBorrower.slice(0, 6)}...${attestBorrower.slice(-4)} can now claim on-chain.`
+                        `Attestation signed & 1.0 MON sent! Borrower ${attestBorrower.slice(0, 6)}...${attestBorrower.slice(-4)} can now claim on-chain.`
                     );
                 } else {
                     setStatus(
-                        `✅ Attestation signed! (Skipped initial funding due to low balance). Borrower ${attestBorrower.slice(0, 6)}...${attestBorrower.slice(-4)} can now claim on-chain.`
+                        `Attestation signed! (Skipped initial funding due to low balance). Borrower ${attestBorrower.slice(0, 6)}...${attestBorrower.slice(-4)} can now claim on-chain.`
                     );
                 }
             }
         } catch (err: any) {
             console.error(err);
-            setStatus('❌ ' + (err.reason || err.message || String(err)));
+            setStatus(err.reason || err.message || String(err));
         } finally {
             setLoading('');
         }
@@ -245,7 +245,7 @@ export default function AdminPanel({ state }: Props) {
             const nullifier = ethers.id(`payroll_nullifier_${Date.now()}_${Math.random()}_${payrollEmployee}`);
             const proof = ethers.hexlify(ethers.randomBytes(64)); // Mock ZK proof
 
-            setStatus('⏳ Processing payroll deposit...');
+            setStatus('Processing payroll deposit...');
             const tx = await router.depositPayroll(
                 payrollEmployee,
                 nullifier,
@@ -291,11 +291,11 @@ export default function AdminPanel({ state }: Props) {
             }
 
             setTxHash(tx.hash);
-            setStatus(`✅ Payroll processed! ${payrollAmount} MON deposited${eventInfo}`);
+            setStatus(`Payroll processed! ${payrollAmount} MON deposited${eventInfo}`);
             await queryEmployeeStatus();
         } catch (err: any) {
             console.error(err);
-            setStatus('❌ ' + (err.reason || err.message || String(err)));
+            setStatus(err.reason || err.message || String(err));
         } finally {
             setLoading('');
         }
@@ -307,7 +307,6 @@ export default function AdminPanel({ state }: Props) {
         return (
             <div className="card animate-slide-up">
                 <div className="empty-state">
-                    <div className="emoji">🏢</div>
                     <p>Connect your wallet to access the Admin Panel</p>
                 </div>
             </div>
@@ -329,7 +328,7 @@ export default function AdminPanel({ state }: Props) {
                 <div className="card card-gradient">
                     <div className="card-header">
                         <div>
-                            <h2 className="card-title">🏢 Admin Panel — Company Mock</h2>
+                            <h2 className="card-title">Admin Panel — Company Mock</h2>
                             <p className="card-subtitle">
                                 Simulate employer actions: register employees, issue attestations, and process payroll
                             </p>
@@ -362,7 +361,6 @@ export default function AdminPanel({ state }: Props) {
                 {/* Section 1: Company Setup */}
                 <div className="card admin-section">
                     <div className="admin-section-header">
-                        <span className="admin-section-icon">📋</span>
                         <div>
                             <h3 className="card-title">1. Company Setup</h3>
                             <p className="card-subtitle">Register your company name and add employees</p>
@@ -415,10 +413,9 @@ export default function AdminPanel({ state }: Props) {
                 {/* Section 2: Issue Attestation */}
                 <div className="card admin-section">
                     <div className="admin-section-header">
-                        <span className="admin-section-icon">🔐</span>
                         <div>
                             <h3 className="card-title">2. Issue Attestation</h3>
-                            <p className="card-subtitle">Sign an employment attestation so the borrower can access EWA loans</p>
+                            <p className="card-subtitle">Sign an employment attestation so the borrower can access Payday loans</p>
                         </div>
                     </div>
 
@@ -470,7 +467,7 @@ export default function AdminPanel({ state }: Props) {
 
                     {attestationCode && (
                         <div className="alert alert-success" style={{ marginTop: 16 }}>
-                            <strong>🎉 Attestation Ready!</strong>
+                            <strong>Attestation Ready!</strong>
                             <p style={{ margin: '8px 0', fontSize: '0.9rem' }}>
                                 Since the borrower app runs on a different port, you must copy this code and paste it on the Borrower App onboarding screen.
                             </p>
@@ -486,7 +483,7 @@ export default function AdminPanel({ state }: Props) {
                                     className="btn btn-secondary"
                                     onClick={() => {
                                         navigator.clipboard.writeText(attestationCode);
-                                        setStatus('✅ Copied to clipboard!');
+                                        setStatus('Copied to clipboard!');
                                     }}
                                 >
                                     Copy Code
@@ -499,7 +496,6 @@ export default function AdminPanel({ state }: Props) {
                 {/* Section 3: Process Payroll */}
                 <div className="card admin-section">
                     <div className="admin-section-header">
-                        <span className="admin-section-icon">💰</span>
                         <div>
                             <h3 className="card-title">3. Process Payroll</h3>
                             <p className="card-subtitle">Deposit payroll for an employee with automatic loan deduction</p>
@@ -521,7 +517,7 @@ export default function AdminPanel({ state }: Props) {
                         {isEmployeeRegistered !== null && (
                             <div style={{ marginTop: 8, display: 'flex', gap: 12, alignItems: 'center' }}>
                                 <span className={`status-badge ${isEmployeeRegistered ? 'status-active' : 'status-defaulted'}`}>
-                                    {isEmployeeRegistered ? '✓ Registered' : '✗ Not Registered'}
+                                    {isEmployeeRegistered ? 'Registered' : 'Not Registered'}
                                 </span>
                                 {lastPayroll && (
                                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -549,7 +545,7 @@ export default function AdminPanel({ state }: Props) {
                     {/* Outstanding obligation info */}
                     {outstandingObligation > 0n && (
                         <div className="alert alert-info" style={{ marginBottom: 16 }}>
-                            ⚡ This employee has an outstanding loan of <strong>{ethers.formatEther(outstandingObligation)} MON</strong>.
+                            This employee has an outstanding loan of <strong>{ethers.formatEther(outstandingObligation)} MON</strong>.
                             The contract will automatically deduct the owed amount from this payroll before forwarding the rest.
                         </div>
                     )}
@@ -585,13 +581,13 @@ export default function AdminPanel({ state }: Props) {
                             payrollNum <= 0
                         }
                     >
-                        {loading === 'payroll' ? 'Processing...' : `💰 Deposit ${payrollNum.toFixed(2)} MON Payroll`}
+                        {loading === 'payroll' ? 'Processing...' : `Deposit ${payrollNum.toFixed(2)} MON Payroll`}
                     </button>
                 </div>
 
                 {/* Status */}
                 {status && (
-                    <div className={`alert ${status.includes('✅') ? 'alert-success' : status.includes('❌') ? 'alert-warning' : 'alert-info'}`}>
+                    <div className={`alert ${status.includes('successful') || status.includes('processed') || status.includes('registered') || status.includes('signed') ? 'alert-success' : (status.includes('Error') || status.includes('failed') ? 'alert-warning' : 'alert-info')}`}>
                         {status}
                     </div>
                 )}
@@ -599,7 +595,7 @@ export default function AdminPanel({ state }: Props) {
                 {/* Info card */}
                 <div className="card" style={{ padding: 20 }}>
                     <div className="privacy-shield" style={{ display: 'flex', width: 'fit-content', marginBottom: 8 }}>
-                        🏭 How PayrollRouter works
+                        How PayrollRouter works
                     </div>
                     <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', lineHeight: 1.7 }}>
                         When you deposit payroll, the <code>PayrollRouter</code> contract automatically deducts the

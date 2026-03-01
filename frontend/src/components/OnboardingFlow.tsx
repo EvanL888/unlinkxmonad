@@ -11,11 +11,12 @@ import TxToast from './TxToast';
 
 interface Props {
     state: AppState;
+    isConnecting?: boolean;
     connectWallet: () => Promise<void>;
     onComplete: () => void;
 }
 
-export default function OnboardingFlow({ state, connectWallet, onComplete }: Props) {
+export default function OnboardingFlow({ state, isConnecting, connectWallet, onComplete }: Props) {
     const { createWallet, walletExists } = useUnlink();
     const [step, setStep] = useState(state.connected ? (walletExists ? 3 : 2) : 1);
     const [loading, setLoading] = useState(false);
@@ -78,7 +79,7 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
             // Check if attestation is already registered on-chain (e.g. via issue-attestation script)
             const alreadyValid = await registry.isValid(address);
             if (alreadyValid) {
-                setAttestationStatus('✅ Attestation already registered on-chain!');
+                setAttestationStatus('Attestation already registered on-chain!');
                 setTimeout(() => onComplete(), 1200);
                 return;
             }
@@ -136,7 +137,7 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
             localStorage.removeItem(`ewa_pending_attestation_${address}`);
 
             setTxHash(tx.hash);
-            setAttestationStatus('✅ Attestation registered on-chain!');
+            setAttestationStatus('Attestation registered on-chain!');
             setTimeout(() => onComplete(), 1500);
         } catch (err: any) {
             const address = await state.signer.getAddress().catch(() => '<your_wallet>');
@@ -148,12 +149,12 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
                 err.reason?.includes('Invalid signature')
             ) {
                 setAttestationStatus(
-                    `⚠️ Attestation not yet issued for your wallet.\n\n` +
+                    `Attestation not yet issued for your wallet.\n\n` +
                     `Please ask your employer to issue one from the Admin App and paste the code above.\n\n` +
                     `(If testing, go to http://localhost:5174 and issue an attestation for this address: ${address})`
                 );
             } else {
-                setAttestationStatus('❌ Error: ' + (err.reason || err.message));
+                setAttestationStatus('Error: ' + (err.reason || err.message));
             }
         } finally {
             setLoading(false);
@@ -193,18 +194,19 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
                             </div>
                         </div>
                         <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: '0.9rem', lineHeight: 1.7 }}>
-                            EWA Protocol lets you access earned wages before payday. Your salary data stays
+                            Payday lets you access earned wages before payday. Your salary data stays
                             completely private — only cryptographic proofs live on-chain.
                         </p>
                         <div className="alert alert-info" style={{ marginBottom: 24 }}>
-                            🔒 Your employer name, salary amount, and financial history are <strong>never</strong> stored on the blockchain.
+                            Your employer name, salary amount, and financial history are <strong>never</strong> stored on the blockchain.
                         </div>
                         <button
                             id="onboard-connect-btn"
-                            className="btn btn-primary btn-lg btn-full"
+                            className={`btn btn-primary btn-lg btn-full ${isConnecting ? 'btn-loading' : ''}`}
                             onClick={handleConnect}
+                            disabled={isConnecting}
                         >
-                            🦊 Connect MetaMask
+                            {isConnecting ? 'Connecting...' : 'Connect MetaMask'}
                         </button>
                     </div>
                 )}
@@ -222,7 +224,7 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
                         {walletExists ? (
                             <>
                                 <div className="alert alert-success" style={{ marginBottom: 24 }}>
-                                    ✅ Private wallet found and loaded!
+                                    Private wallet found and loaded!
                                 </div>
                                 <button
                                     className="btn btn-primary btn-lg btn-full"
@@ -242,7 +244,7 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
                                     onClick={handleCreateUnlinkWallet}
                                     disabled={loading}
                                 >
-                                    {loading ? 'Securing...' : '🛡️ Create Private Wallet'}
+                                    {loading ? 'Securing...' : 'Create Private Wallet'}
                                 </button>
                             </>
                         )}
@@ -255,13 +257,13 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
                         <div className="card-header">
                             <div>
                                 <h2 className="card-title">Switch to Monad Testnet</h2>
-                                <p className="card-subtitle">EWA Protocol runs on Monad L1 for fast, low-cost transactions</p>
+                                <p className="card-subtitle">Payday runs on Monad L1 for fast, low-cost transactions</p>
                             </div>
                         </div>
                         {state.chainId === MONAD_CHAIN_ID ? (
                             <>
                                 <div className="alert alert-success">
-                                    ✅ Connected to Monad Testnet (Chain {MONAD_CHAIN_ID})
+                                    Connected to Monad Testnet (Chain {MONAD_CHAIN_ID})
                                 </div>
                                 <button
                                     className="btn btn-primary btn-lg btn-full"
@@ -296,7 +298,7 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
                                 <h2 className="card-title">Verify Employment</h2>
                                 <p className="card-subtitle">Submit your payroll attestation to prove eligibility</p>
                             </div>
-                            <span className="privacy-shield">🔒 Privacy-Preserving</span>
+                            <span className="privacy-shield">Privacy-Preserving</span>
                         </div>
 
                         <div className="preview-box">
@@ -319,7 +321,7 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
                         </div>
 
                         <div className="alert alert-info" style={{ marginBottom: 16 }}>
-                            ℹ️ For the hackathon demo, you must create an attestation in the <strong>Admin App</strong> and paste the generated Attestation Code below.
+                            For the hackathon demo, you must create an attestation in the <strong>Admin App</strong> and paste the generated Attestation Code below.
                         </div>
 
                         <div className="form-group" style={{ marginBottom: 24, textAlign: 'left' }}>
@@ -353,7 +355,7 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
                             onClick={handleSubmitAttestation}
                             disabled={loading}
                         >
-                            {loading ? 'Processing...' : '🔐 Submit Attestation Proof'}
+                            {loading ? 'Processing...' : 'Submit Attestation Proof'}
                         </button>
 
                         <button
