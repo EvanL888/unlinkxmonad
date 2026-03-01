@@ -132,21 +132,37 @@ function App() {
                 if (fromBlock <= blockNum) {
                     for (let start = fromBlock; start <= blockNum; start += 99) {
                         const end = Math.min(start + 98, blockNum);
-                        const logs = await router.queryFilter(filter, start, end);
-                        for (const log of logs as any[]) {
-                            if (log.args && log.args.deducted !== undefined) {
-                                totalDeductionsOnChain += BigInt(log.args.deducted);
+                        try {
+                            const logs = await router.queryFilter(filter, start, end);
+                            for (const log of logs as any[]) {
+                                if (log.args && log.args.deducted !== undefined) {
+                                    totalDeductionsOnChain += BigInt(log.args.deducted);
 
-                                const block = await state.provider.getBlock(log.blockHash);
-                                payrollEvents.push({
-                                    date: block ? block.timestamp * 1000 : Date.now(),
-                                    totalDeposit: log.args.totalDeposit.toString(),
-                                    deducted: log.args.deducted.toString(),
-                                    forwarded: log.args.forwarded.toString(),
-                                    hash: log.transactionHash
-                                });
+                                    let blockTime = Date.now();
+                                    try {
+                                        const block = await state.provider.getBlock(log.blockHash);
+                                        if (block) blockTime = block.timestamp * 1000;
+                                    } catch (e) {
+                                        console.warn('Rate limit hit fetching block timestamp. Falling back to current time.');
+                                    }
+
+                                    // Prevent duplicate logs if the block ranges overlap between syncs
+                                    if (!payrollEvents.find((e: any) => e.hash === log.transactionHash)) {
+                                        payrollEvents.push({
+                                            date: blockTime,
+                                            totalDeposit: log.args.totalDeposit.toString(),
+                                            deducted: log.args.deducted.toString(),
+                                            forwarded: log.args.forwarded.toString(),
+                                            hash: log.transactionHash
+                                        });
+                                    }
+                                }
                             }
+                        } catch (e) {
+                            console.warn(`queryFilter failed for block range ${start}-${end}`, e);
+                            break;
                         }
+                        await new Promise(r => setTimeout(r, 200));
                     }
                     localStorage.setItem(`ewa_payroll_last_block_${state.address}`, blockNum.toString());
                     localStorage.setItem(`ewa_payroll_events_${state.address}`, JSON.stringify(payrollEvents));
