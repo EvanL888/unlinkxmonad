@@ -52,7 +52,7 @@ async function main() {
     console.log("  Registered employer hash:", demoEmployerHash);
 
     // 7. Fund lending pool with liquidity
-    const liquidityAmount = ethers.parseEther("0.1");
+    const liquidityAmount = ethers.parseEther("1.0");
     await ewaLending.depositLiquidity({ value: liquidityAmount });
     console.log("  Funded lending pool:", ethers.formatEther(liquidityAmount), "MON");
 
