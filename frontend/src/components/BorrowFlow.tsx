@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { ethers } from 'ethers';
 import { AppState } from '../App';
-import { useInteract, toCall } from '@unlink-xyz/react';
 import {
     CONTRACTS,
     EWA_LENDING_ABI,
@@ -18,8 +17,6 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
     const [schemeId, setSchemeId] = useState(0);
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState('');
-
-    const { interact, isPending } = useInteract();
 
     const maxLoan = state.maxLoanAmount > 0n
         ? Number(ethers.formatEther(state.maxLoanAmount))
@@ -56,24 +53,30 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
         try {
             const amountWei = ethers.parseEther(amount.toString());
 
-            // Generate the exact calldata for public borrow(uint256,uint8) call
-            const lendingInterface = new ethers.Interface(EWA_LENDING_ABI);
-            const calldata = lendingInterface.encodeFunctionData('borrow', [amountWei, schemeId]);
+            const lending = new ethers.Contract(
+                CONTRACTS.ewaLending,
+                EWA_LENDING_ABI,
+                state.signer
+            );
 
-            // Interact: execute public borrow(), receive funds directly to private wallet
-            const result = await interact({
-                spend: [], // not spending anything
-                calls: [
-                    toCall({
-                        to: CONTRACTS.ewaLending,
-                        value: 0n,
-                        data: calldata
-                    })
-                ],
-                receive: [{ token: '0x0', minAmount: amountWei }] // receive the loan privately
-            });
+            // Step 1: Call the smart contract borrow function
+            // The contract will send `amountWei` directly to the user's public EOA
+            const tx = await lending.borrow(amountWei, schemeId);
 
-            setStatus(`✅ Loan silently approved! Shielded Relay ID: ${result.relayId}`);
+            // Wait for receipt, or just let network process it if RPC rate limits us
+            try {
+                await tx.wait(1);
+            } catch (waitErr: any) {
+                if (waitErr?.message?.includes('rate limit') || waitErr?.message?.includes('429')) {
+                    console.warn("RPC rate limited on wait(), but tx is likely pending.");
+                    // Give the network 4 seconds to process instead of immediately failing
+                    await new Promise(resolve => setTimeout(resolve, 4000));
+                } else {
+                    throw waitErr;
+                }
+            }
+
+            setStatus(`✅ Loan approved and sent to your public wallet!`);
             setTimeout(() => onBorrowed(), 3000);
         } catch (err: any) {
             console.error(err);
@@ -109,17 +112,27 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
                 <div style={{ marginBottom: 16 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
                         <label className="form-label" style={{ margin: 0 }}>Loan Amount (MON)</label>
-                        <span style={{
-                            fontSize: '1.5rem',
-                            fontWeight: 800,
-                            ...(amount > maxLoan ? { color: 'var(--accent-red)' } : {
-                                background: 'var(--gradient-primary)',
-                                WebkitBackgroundClip: 'text',
-                                WebkitTextFillColor: 'transparent',
-                            })
-                        }}>
-                            {amount.toFixed(2)} MON
-                        </span>
+                        <input
+                            type="number"
+                            min={0.01}
+                            max={liquidity}
+                            step={0.01}
+                            value={amount}
+                            onChange={(e) => setAmount(Number(e.target.value))}
+                            style={{
+                                fontSize: '1.5rem',
+                                fontWeight: 800,
+                                background: 'transparent',
+                                border: 'none',
+                                outline: 'none',
+                                textAlign: 'right',
+                                width: '120px',
+                                padding: 0,
+                                ...(amount > maxLoan ? { color: 'var(--accent-red)' } : {
+                                    color: 'var(--accent-blue)',
+                                })
+                            }}
+                        />
                     </div>
                     <input
                         type="range"

@@ -51,14 +51,34 @@ export default function Dashboard({ state, refreshData }: Props) {
                     <div className="stat-label">Active Loans</div>
                     <div className="stat-value">{state.activeLoans.filter((l: any) => Number(l.status) === 0).length}</div>
                 </div>
-                <div className="stat-card">
-                    <div className="stat-label">Outstanding Obligation</div>
-                    <div className="stat-value gradient">
-                        {state.totalObligation > 0n
-                            ? ethers.formatEther(state.totalObligation)
-                            : '0'} MON
-                    </div>
-                </div>
+
+                {/* Outstanding Obligation logic wrapper */}
+                {(() => {
+                    const totalPrincipal = state.activeLoans.reduce((sum: bigint, l: any) => sum + BigInt(l.principal), 0n);
+                    const totalInterest = state.activeLoans.reduce((sum: bigint, l: any) => sum + BigInt(l.interest), 0n);
+                    const totalRepaid = state.activeLoans.reduce((sum: bigint, l: any) => sum + BigInt(l.totalRepaid), 0n);
+                    const remainingOwed = (totalPrincipal + totalInterest) - totalRepaid;
+
+                    // Rough estimation of how much principal vs interest is remaining, ignoring repayment ordering for UI simplicity
+                    const remainingPrincipal = remainingOwed > totalInterest ? remainingOwed - totalInterest : 0n;
+                    const remainingInterest = remainingOwed > totalInterest ? totalInterest : remainingOwed;
+
+                    return (
+                        <div className="stat-card">
+                            <div className="stat-label">Outstanding Obligation</div>
+                            <div className="stat-value gradient">
+                                {remainingOwed > 0n ? ethers.formatEther(remainingOwed) : '0'} MON
+                            </div>
+                            {remainingOwed > 0n && (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 8 }}>
+                                    <div>Principal: {Number(ethers.formatEther(remainingPrincipal)).toFixed(4)} MON</div>
+                                    <div>Interest: {Number(ethers.formatEther(remainingInterest)).toFixed(4)} MON</div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })()}
+
                 <div className="stat-card">
                     <div className="stat-label">Pool Liquidity</div>
                     <div className="stat-value">
@@ -71,35 +91,51 @@ export default function Dashboard({ state, refreshData }: Props) {
 
             {/* Reputation Meter + Privacy Status */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-                <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
-                    <div className="rep-meter">
-                        <svg width="140" height="140" viewBox="0 0 140 140">
-                            <defs>
-                                <linearGradient id="repGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" stopColor="#8b5cf6" />
-                                    <stop offset="50%" stopColor="#3b82f6" />
-                                    <stop offset="100%" stopColor="#06b6d4" />
-                                </linearGradient>
-                            </defs>
-                            <circle cx="70" cy="70" r="58" className="rep-meter-bg" />
-                            <circle
-                                cx="70" cy="70" r="58"
-                                className="rep-meter-fill"
-                                strokeDasharray={circumference}
-                                strokeDashoffset={repOffset}
-                            />
-                        </svg>
-                        <div className="rep-value">
-                            <div className="score">{state.reputation}</div>
-                            <div className="label">Reputation</div>
+                <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', padding: 32 }}>
+                    <h3 className="card-title" style={{ marginBottom: 16 }}>🕒 Pending Payroll Settlements</h3>
+
+                    {state.activeLoans.filter((l: any) => Number(l.status) === 0).length > 0 ? (
+                        <div style={{ width: '100%', overflowX: 'auto', marginTop: 16 }}>
+                            <table className="data-table" style={{ width: '100%' }}>
+                                <thead>
+                                    <tr>
+                                        <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid var(--border-color)' }}>Loan ID</th>
+                                        <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid var(--border-color)' }}>Auto-Deduction Amount</th>
+                                        <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid var(--border-color)' }}>Settlement Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {state.activeLoans
+                                        .filter((l: any) => Number(l.status) === 0)
+                                        .map((loan: any, idx: number) => {
+                                            const amountDue = Number(ethers.formatEther(BigInt(loan.totalOwed) - BigInt(loan.totalRepaid))).toFixed(4);
+                                            // Ideally, we'd query PayrollRouter for the exact payday, but for UI purposes,
+                                            // we display the Loan Due Date as the target settlement boundary.
+                                            const dueDate = new Date(Number(loan.dueDate) * 1000).toLocaleString('en-US', {
+                                                month: 'short', day: 'numeric', year: 'numeric'
+                                            });
+
+                                            return (
+                                                <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                                    <td style={{ padding: '12px 16px', fontWeight: 600 }}>#{Number(loan.id)}</td>
+                                                    <td style={{ padding: '12px 16px', fontFamily: 'var(--font-mono)', color: 'var(--accent-red)' }}>
+                                                        {amountDue} MON
+                                                    </td>
+                                                    <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>
+                                                        {dueDate}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
-                    <div style={{ marginTop: 20, textAlign: 'center' }}>
-                        <div style={{ fontSize: '0.85rem', color: repLevel.color, fontWeight: 600 }}>{repLevel.label}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                            Higher reputation → lower borrowing rates
+                    ) : (
+                        <div className="empty-state" style={{ padding: '24px 0', width: '100%', minHeight: '120px' }}>
+                            <div className="emoji">✨</div>
+                            <p style={{ margin: 0 }}>No upcoming settlements.<br />You are all caught up!</p>
                         </div>
-                    </div>
+                    )}
                 </div>
 
                 <div style={{ display: 'grid', gap: 24 }}>
@@ -109,7 +145,7 @@ export default function Dashboard({ state, refreshData }: Props) {
                             <div style={{ padding: '16px', background: 'var(--bg-card-hover)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
                                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Shielded MON</div>
                                 <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--accent-green)' }}>
-                                    {balances && balances['0x0'] ? Number(ethers.formatEther(balances['0x0'])).toFixed(4) : '0.0000'}
+                                    {balances && balances[ethers.ZeroAddress] ? Number(ethers.formatEther(balances[ethers.ZeroAddress])).toFixed(4) : '0.0000'}
                                 </div>
                             </div>
                         ) : (
@@ -164,6 +200,7 @@ export default function Dashboard({ state, refreshData }: Props) {
                             <thead>
                                 <tr>
                                     <th>ID</th>
+                                    <th>Date Issued</th>
                                     <th>Principal</th>
                                     <th>Interest</th>
                                     <th>Total Owed</th>
@@ -176,6 +213,11 @@ export default function Dashboard({ state, refreshData }: Props) {
                                 {state.activeLoans.map((loan: any, idx: number) => (
                                     <tr key={idx}>
                                         <td>#{Number(loan.id)}</td>
+                                        <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                            {new Date(Number(loan.createdAt) * 1000).toLocaleString('en-US', {
+                                                month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+                                            })}
+                                        </td>
                                         <td style={{ fontFamily: 'var(--font-mono)' }}>
                                             {Number(ethers.formatEther(loan.principal)).toFixed(4)}
                                         </td>

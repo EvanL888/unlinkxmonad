@@ -39,7 +39,7 @@ export default function RepayFlow({ state, onRepaid }: Props) {
             // 2. Call the lending contract with the public repay payload and the unshielded value
             // 3. Receive any unused unshielded value back into the private balance
             const result = await interact({
-                spend: [{ token: '0x0', amount: amountWei }],
+                spend: [{ token: ethers.ZeroAddress, amount: amountWei }],
                 calls: [
                     toCall({
                         to: CONTRACTS.ewaLending,
@@ -47,7 +47,7 @@ export default function RepayFlow({ state, onRepaid }: Props) {
                         data: calldata
                     })
                 ],
-                receive: [{ token: '0x0', minAmount: 0n }]
+                receive: [{ token: ethers.ZeroAddress, minAmount: 0n }]
             });
 
             setStatus(`✅ Repayment successful! Relay ID: ${result.relayId}`);
