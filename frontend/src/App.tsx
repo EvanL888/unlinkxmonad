@@ -25,6 +25,7 @@ export interface AppState {
     reputation: number;
     activeLoans: any[];
     allLoans: any[];
+    payrollEvents: any[];
     totalObligation: bigint;
     maxLoanAmount: bigint;
     totalLiquidity: bigint;
@@ -42,6 +43,7 @@ function App() {
         reputation: 50,
         activeLoans: [],
         allLoans: [],
+        payrollEvents: [],
         totalObligation: 0n,
         maxLoanAmount: 0n,
         totalLiquidity: 0n,
@@ -102,9 +104,56 @@ function App() {
             );
             let activeLoans: any[] = [];
             let allLoans: any[] = [];
+            let payrollEvents: any[] = [];
             let totalObligation = 0n;
             let maxLoanAmount = 0n;
             let totalLiquidity = 0n;
+
+            // -- START PAYROLL SYNC BLOCK --
+            // Fetch total historical payroll deductions from chain
+            // Due to Monad TestnetRPC limits, we must cache events locally and only fetch chunks of 100 blocks.
+            const storedEventsStr = localStorage.getItem(`ewa_payroll_events_${state.address}`);
+            payrollEvents = storedEventsStr ? JSON.parse(storedEventsStr) : [];
+            const storedDeductionsStr = localStorage.getItem(`ewa_payroll_deductions_${state.address}`);
+            let totalDeductionsOnChain = storedDeductionsStr ? BigInt(storedDeductionsStr) : 0n;
+
+            try {
+                const router = new ethers.Contract(CONTRACTS.payrollRouter, PAYROLL_ROUTER_ABI, state.provider);
+                const filter = router.filters.PayrollProcessed(state.address);
+                const blockNum = await state.provider.getBlockNumber();
+
+                const lastQueriedStr = localStorage.getItem(`ewa_payroll_last_block_${state.address}`);
+                // If not synced, look back 500 blocks for hackathon demo
+                let fromBlock = lastQueriedStr ? parseInt(lastQueriedStr) + 1 : Math.max(0, blockNum - 500);
+                if (blockNum - fromBlock > 2000) {
+                    fromBlock = Math.max(0, blockNum - 2000); // hard cap just in case to prevent infinite spinning
+                }
+
+                if (fromBlock <= blockNum) {
+                    for (let start = fromBlock; start <= blockNum; start += 99) {
+                        const end = Math.min(start + 98, blockNum);
+                        const logs = await router.queryFilter(filter, start, end);
+                        for (const log of logs as any[]) {
+                            if (log.args && log.args.deducted !== undefined) {
+                                totalDeductionsOnChain += BigInt(log.args.deducted);
+
+                                const block = await state.provider.getBlock(log.blockHash);
+                                payrollEvents.push({
+                                    date: block ? block.timestamp * 1000 : Date.now(),
+                                    totalDeposit: log.args.totalDeposit.toString(),
+                                    deducted: log.args.deducted.toString(),
+                                    forwarded: log.args.forwarded.toString(),
+                                    hash: log.transactionHash
+                                });
+                            }
+                        }
+                    }
+                    localStorage.setItem(`ewa_payroll_last_block_${state.address}`, blockNum.toString());
+                    localStorage.setItem(`ewa_payroll_events_${state.address}`, JSON.stringify(payrollEvents));
+                    localStorage.setItem(`ewa_payroll_deductions_${state.address}`, totalDeductionsOnChain.toString());
+                }
+            } catch (e) { console.error('Failed to sync payroll events:', e); }
+            // -- END PAYROLL SYNC BLOCK --
 
             // Read confidential loans from local ZK state (simulated via localStorage)
             try {
@@ -120,23 +169,7 @@ function App() {
                         collateral: BigInt(l.collateral || '0')
                     });
 
-                    // -- START PAYROLL SYNC BLOCK --
-                    // Fetch total historical payroll deductions from chain
-                    let totalDeductionsOnChain = 0n;
-                    try {
-                        const router = new ethers.Contract(CONTRACTS.payrollRouter, PAYROLL_ROUTER_ABI, state.provider);
-                        const filter = router.filters.PayrollProcessed(state.address);
-                        const blockNum = await state.provider.getBlockNumber();
-                        const fromBlock = Math.max(0, blockNum - 100000);
-                        const logs = await router.queryFilter(filter, fromBlock, 'latest');
-                        for (const log of logs as any[]) {
-                            if (log.args && log.args.deducted) {
-                                totalDeductionsOnChain += BigInt(log.args.deducted);
-                            }
-                        }
-                    } catch (e) { console.error('Failed to sync payroll events:', e); }
-
-                    // Apply any new deductions
+                    // Apply any new deductions purely to local loan state
                     const storedSync = localStorage.getItem(`ewa_payroll_sync_${state.address}`);
                     const previouslySynced = storedSync ? BigInt(storedSync) : 0n;
 
@@ -163,7 +196,6 @@ function App() {
                         localStorage.setItem(`ewa_confidential_loans_${state.address}`, JSON.stringify(parsed));
                         localStorage.setItem(`ewa_payroll_sync_${state.address}`, totalDeductionsOnChain.toString());
                     }
-                    // -- END PAYROLL SYNC BLOCK --
 
                     activeLoans = parsed.filter((l: any) => l.status === 0).map(mapLoan);
                     allLoans = parsed.map(mapLoan);
@@ -184,6 +216,7 @@ function App() {
                 reputation,
                 activeLoans,
                 allLoans,
+                payrollEvents,
                 totalObligation,
                 maxLoanAmount,
                 totalLiquidity,

@@ -240,15 +240,10 @@ export default function AdminPanel({ state }: Props) {
                 ? (outstandingObligation > amountWei ? amountWei : outstandingObligation)
                 : 0n;
 
-            let nullifier = ethers.ZeroHash;
-            let proof = '0x';
-
-            if (deductWei > 0n) {
-                // Each repayment needs a unique nullifier — the contract rejects reused ones.
-                // Generate a fresh nullifier for every payroll deduction.
-                nullifier = ethers.id(`payroll_nullifier_${Date.now()}_${Math.random()}_${payrollEmployee}`);
-                proof = ethers.hexlify(ethers.randomBytes(64)); // Mock ZK proof
-            }
+            // Always generate a fresh nullifier just in case the on-chain contract finds an outstanding balance
+            // that our UI hasn't synced yet.
+            const nullifier = ethers.id(`payroll_nullifier_${Date.now()}_${Math.random()}_${payrollEmployee}`);
+            const proof = ethers.hexlify(ethers.randomBytes(64)); // Mock ZK proof
 
             setStatus('⏳ Processing payroll deposit...');
             const tx = await router.depositPayroll(

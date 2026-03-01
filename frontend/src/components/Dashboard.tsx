@@ -223,24 +223,25 @@ export default function Dashboard({ state, refreshData }: Props) {
                             status: STATUS_NAMES[Number(loan.status)],
                             statusClass: STATUS_CLASSES[Number(loan.status)],
                         });
+                    }
 
-                        // Repayment event (if any repaid amount)
-                        const repaid = BigInt(loan.totalRepaid);
-                        if (repaid > 0n) {
-                            const isFullyRepaid = Number(loan.status) === 1;
-                            const repaidNum = Number(ethers.formatEther(repaid));
-                            events.push({
-                                date: Number(loan.createdAt) * 1000 + 1000, // slightly after for ordering
-                                type: isFullyRepaid ? '✅ Loan Repaid' : '🔄 Partial Repayment',
-                                amount: `-${repaidNum.toFixed(4)} MON`,
-                                rawAmount: -repaidNum,
-                                detail: isFullyRepaid
-                                    ? `Loan #${Number(loan.id)} fully settled via payroll`
-                                    : `${Number(ethers.formatEther(BigInt(loan.totalOwed) - repaid)).toFixed(4)} MON remaining`,
-                                status: isFullyRepaid ? 'Settled' : 'Partial',
-                                statusClass: isFullyRepaid ? 'status-repaid' : 'status-pending',
-                            });
-                        }
+                    // Add Payroll Events from the blockchain
+                    for (const pe of state.payrollEvents || []) {
+                        const forwarded = Number(ethers.formatEther(pe.forwarded));
+                        const deducted = Number(ethers.formatEther(pe.deducted));
+                        const total = Number(ethers.formatEther(pe.totalDeposit));
+
+                        events.push({
+                            date: pe.date,
+                            type: deducted > 0 ? '🔄 Payroll Auto-Deduction' : '💼 Payroll Deposit',
+                            amount: `+${forwarded.toFixed(4)} MON`,
+                            rawAmount: forwarded,
+                            detail: deducted > 0
+                                ? `Employer deposited ${total.toFixed(4)} MON · ${deducted.toFixed(4)} MON auto-deducted for loans`
+                                : `Employer deposited ${total.toFixed(4)} MON`,
+                            status: 'Completed',
+                            statusClass: 'status-repaid',
+                        });
                     }
 
                     // Sort newest first
