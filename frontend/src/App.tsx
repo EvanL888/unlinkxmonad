@@ -140,8 +140,6 @@ function App() {
                             const logs = await router.queryFilter(filter, start, end);
                             for (const log of logs as any[]) {
                                 if (log.args && log.args.deducted !== undefined) {
-                                    totalDeductionsOnChain += BigInt(log.args.deducted);
-
                                     let blockTime = Date.now();
                                     try {
                                         const block = await state.provider.getBlock(log.blockHash);
@@ -152,6 +150,8 @@ function App() {
 
                                     // Prevent duplicate logs if the block ranges overlap between syncs
                                     if (!payrollEvents.find((e: any) => e.hash === log.transactionHash)) {
+                                        totalDeductionsOnChain += BigInt(log.args.deducted);
+
                                         payrollEvents.push({
                                             date: blockTime,
                                             totalDeposit: log.args.totalDeposit.toString(),
@@ -282,6 +282,28 @@ function App() {
             ethereum.removeListener('chainChanged', handleChainChanged);
         };
     }, [connectWallet]);
+
+    // Listen for PayrollProcessed events to auto-refresh the dashboard
+    useEffect(() => {
+        if (!state.provider || !state.address || !state.connected) return;
+
+        const router = new ethers.Contract(CONTRACTS.payrollRouter, PAYROLL_ROUTER_ABI, state.provider);
+        const filter = router.filters.PayrollProcessed(state.address);
+
+        const onPayrollProcessed = (...args: any[]) => {
+            console.log("PayrollProcessed event detected on address. Refreshing dashboard data...");
+            // Slight delay to ensure the RPC fully indexes the logs before querying
+            setTimeout(() => {
+                refreshData();
+            }, 2500);
+        };
+
+        router.on(filter, onPayrollProcessed);
+
+        return () => {
+            router.off(filter, onPayrollProcessed);
+        };
+    }, [state.provider, state.address, state.connected, refreshData]);
 
     const tabs: { id: Tab; label: string }[] = [
         { id: 'onboarding', label: 'Onboard' },
