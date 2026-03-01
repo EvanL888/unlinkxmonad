@@ -348,11 +348,7 @@ export default function Dashboard({ state, refreshData }: Props) {
                             className="btn btn-secondary"
                             onClick={() => {
                                 if (window.confirm("This will clear your local mock loan history (useful if the smart contract was redeployed). Continue?")) {
-                                    localStorage.removeItem(`ewa_confidential_loans_${state.address}`);
-                                    localStorage.removeItem(`ewa_payroll_events_${state.address}`);
-                                    localStorage.removeItem(`ewa_payroll_deductions_${state.address}`);
-                                    localStorage.removeItem(`ewa_payroll_sync_${state.address}`);
-                                    localStorage.removeItem(`ewa_payroll_last_block_${state.address}`);
+                                    localStorage.clear();
                                     window.location.reload();
                                 }
                             }}
