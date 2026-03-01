@@ -65,7 +65,8 @@ export default function Dashboard({ state, refreshData }: Props) {
 
                     const maxLimit = Number(ethers.formatEther(state.maxLoanAmount));
                     const totalObligationNum = Number(ethers.formatEther(state.totalObligation));
-                    const limitLeft = Math.max(0, maxLimit - totalObligationNum);
+                    const poolLiquidityLimit = Number(ethers.formatEther(state.totalLiquidity)) * 0.25;
+                    const limitLeft = Math.min(Math.max(0, maxLimit - totalObligationNum), poolLiquidityLimit);
 
                     return (
                         <>

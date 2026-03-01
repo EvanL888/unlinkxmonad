@@ -28,7 +28,7 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
         ? Number(ethers.formatEther(state.totalLiquidity))
         : 0;
 
-    const actualMax = Math.min(maxLoan, liquidity);
+    const actualMax = Math.min(maxLoan, liquidity * 0.25);
 
     // Interest previews
     const getInterestPreview = (principal: number, scheme: number): number => {
@@ -118,7 +118,7 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
                         <input
                             type="number"
                             min={0.01}
-                            max={liquidity}
+                            max={actualMax}
                             step={0.01}
                             value={amount}
                             onChange={(e) => setAmount(Number(e.target.value))}
@@ -131,7 +131,7 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
                                 textAlign: 'right',
                                 width: '120px',
                                 padding: 0,
-                                ...(amount > maxLoan ? { color: 'var(--accent-red)' } : {
+                                ...(amount > actualMax ? { color: 'var(--accent-red)' } : {
                                     color: 'var(--accent-blue)',
                                 })
                             }}
@@ -141,7 +141,7 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
                         type="range"
                         id="loan-amount-slider"
                         min={0.01}
-                        max={liquidity > 0 ? liquidity : 0.01}
+                        max={actualMax > 0 ? actualMax : 0.01}
                         step={0.01}
                         value={amount}
                         onChange={e => setAmount(Number(e.target.value))}
@@ -149,11 +149,11 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
                     />
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                         <span>0.01 MON</span>
-                        <span>Max: {liquidity.toFixed(2)} MON</span>
+                        <span>Max: {actualMax.toFixed(2)} MON</span>
                     </div>
-                    {amount > maxLoan && (
+                    {amount > actualMax && (
                         <div style={{ color: 'var(--accent-red)', fontSize: '0.8rem', marginTop: 4 }}>
-                            Exceeds your allowed limit of {maxLoan.toFixed(2)} MON.
+                            Exceeds your allowed limit of {actualMax.toFixed(2)} MON.
                         </div>
                     )}
                 </div>
@@ -224,7 +224,7 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
                     id="borrow-confirm-btn"
                     className="btn btn-primary btn-lg btn-full"
                     onClick={handleBorrow}
-                    disabled={loading || amount <= 0 || amount > maxLoan}
+                    disabled={loading || amount <= 0 || amount > actualMax}
                 >
                     {loading ? 'Processing...' : `Borrow ${amount.toFixed(2)} MON`}
                 </button>
