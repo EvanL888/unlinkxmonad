@@ -132,6 +132,7 @@ npm run dev
 ```
 
 The app launches at **http://localhost:5173** (Vite dev server).
+The **Admin Panel** is at **http://localhost:5173/admin** (separate route).
 
 ---
 
@@ -159,6 +160,30 @@ The app launches at **http://localhost:5173** (Vite dev server).
 ### Step 4: Dashboard
 - View your **Reputation Score**, **Active Loans**, **Available Credit**, and **🔒 Shielded Balance**
 - All loan data is stored locally — the blockchain only has encrypted commitment hashes
+
+---
+
+## 9. Admin Panel — Company Mock (Payroll)
+
+Navigate to **http://localhost:5173/admin** to access the standalone admin page.
+
+This page lets you act as an employer/company:
+
+### Section 1: Company Setup
+- Set your company name (hashed on-chain as an employer identifier)
+- Register employee wallet addresses on the `PayrollRouter` contract
+
+### Section 2: Issue Attestation
+- Sign an employment attestation for a borrower address
+- Registers the employer hash and attestation on-chain so the borrower becomes eligible to borrow
+
+### Section 3: Process Payroll
+- Enter an employee address and payroll amount (in MON)
+- The contract **automatically deducts** the employee's outstanding loan obligation and sends it to `EWALending.repayConfidential()` — the company has no control over the deduction amount
+- The remainder is forwarded to the employee's wallet
+- The preview shows the auto-computed split in real-time
+
+> The admin page has its own wallet connection and header with a "← Back to App" link.
 
 ---
 
@@ -197,18 +222,21 @@ unlinkxmonad/
 │   └── InterestCalculator.sol  # Interest computation
 ├── scripts/
 │   ├── deploy.ts               # Full deployment script
-│   └── issue-attestation.ts    # Attestation issuance for testing
+│   ├── issue-attestation.ts    # Attestation issuance for testing
+│   └── simulate-payroll.ts    # CLI payroll simulation
 ├── frontend/
 │   └── src/
-│       ├── App.tsx             # Main app state + tab routing
-│       ├── main.tsx            # Entry point (wraps with UnlinkProvider)
+│       ├── App.tsx             # Borrower app (/, tab-based routing)
+│       ├── AdminPage.tsx       # Standalone admin page (/admin)
+│       ├── main.tsx            # Entry point (BrowserRouter + UnlinkProvider)
 │       ├── config/
-│       │   └── contracts.ts    # Addresses, ABIs, Unlink constants
+│       │   └── contracts.ts    # Addresses, ABIs, repayment schemes
 │       └── components/
 │           ├── OnboardingFlow.tsx   # Wallet + Unlink setup + attestation
 │           ├── BorrowFlow.tsx       # Private borrowing via useInteract
 │           ├── RepayFlow.tsx        # Private repayment via useInteract
-│           └── Dashboard.tsx        # Stats + shielded balance display
+│           ├── Dashboard.tsx        # Stats + shielded balance display
+│           └── AdminPanel.tsx       # Admin panel (company mock + payroll)
 ├── hardhat.config.ts           # Hardhat config (Monad network)
 ├── deployed-addresses.json     # Auto-generated after deploy
 ├── .env                        # PRIVATE_KEY + MONAD_RPC_URL

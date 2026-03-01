@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { AppState } from '../App';
 import { useUnlinkBalances } from '@unlink-xyz/react';
@@ -24,27 +25,27 @@ export default function Dashboard({ state, refreshData }: Props) {
         );
     }
 
-    const circumference = 2 * Math.PI * 58;
-    const repOffset = circumference - (state.reputation / 100) * circumference;
-
-    const getRepLevel = (rep: number) => {
-        if (rep >= 80) return { label: 'Excellent', color: 'var(--accent-green)' };
-        if (rep >= 60) return { label: 'Good', color: 'var(--accent-blue)' };
-        if (rep >= 40) return { label: 'Fair', color: 'var(--accent-amber)' };
-        return { label: 'Poor', color: 'var(--accent-red)' };
-    };
-
-    const repLevel = getRepLevel(state.reputation);
+    // Fetch native MON balance
+    const [monBalance, setMonBalance] = useState<string>('...');
+    useEffect(() => {
+        if (!state.provider || !state.address) return;
+        (async () => {
+            try {
+                const bal = await state.provider!.getBalance(state.address);
+                setMonBalance(Number(ethers.formatEther(bal)).toFixed(4));
+            } catch { setMonBalance('—'); }
+        })();
+    }, [state.provider, state.address, state.activeLoans, state.allLoans]);
 
     return (
         <div className="animate-slide-up" style={{ display: 'grid', gap: 24 }}>
             {/* Stats row */}
             <div className="stats-grid">
                 <div className="stat-card">
-                    <div className="stat-label">Reputation Score</div>
-                    <div className="stat-value gradient">{state.reputation}/100</div>
-                    <div style={{ fontSize: '0.75rem', color: repLevel.color, marginTop: 4, fontWeight: 600 }}>
-                        {repLevel.label}
+                    <div className="stat-label">MON Balance</div>
+                    <div className="stat-value gradient">{monBalance}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                        Monad Testnet
                     </div>
                 </div>
                 <div className="stat-card">
@@ -154,58 +155,172 @@ export default function Dashboard({ state, refreshData }: Props) {
                     )}
                 </div>
 
-                <div style={{ display: 'grid', gap: 24 }}>
-                    <div className="card">
-                        <h3 className="card-title" style={{ marginBottom: 20 }}>💰 Privacy Wallet Balance</h3>
-                        {unlinkReady ? (
-                            <div style={{ padding: '16px', background: 'var(--bg-card-hover)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Shielded MON</div>
-                                <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--accent-green)' }}>
-                                    {balances && balances[ethers.ZeroAddress] ? Number(ethers.formatEther(balances[ethers.ZeroAddress])).toFixed(4) : '0.0000'}
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="empty-state" style={{ padding: 16 }}>
-                                <div className="emoji">🔒</div>
-                                <p>Unlink SDK loading...</p>
-                            </div>
-                        )}
-                    </div>
+                {/* Outstanding Loans — right column */}
+                <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-start', padding: 32 }}>
+                    <h3 className="card-title" style={{ marginBottom: 16 }}>📌 Outstanding Loans</h3>
 
-                    <div className="card">
-                        <h3 className="card-title" style={{ marginBottom: 20 }}>🔒 Privacy Status</h3>
-                        <div style={{ display: 'grid', gap: 12 }}>
-                            <div className="privacy-shield" style={{ justifyContent: 'flex-start' }}>
-                                ✅ Salary data — Not on-chain
-                            </div>
-                            <div className="privacy-shield" style={{ justifyContent: 'flex-start' }}>
-                                ✅ Employer identity — Hashed only
-                            </div>
-                            <div className="privacy-shield" style={{ justifyContent: 'flex-start' }}>
-                                ✅ Financial history — Private via Unlink
-                            </div>
-                            <div className="privacy-shield" style={{ justifyContent: 'flex-start' }}>
-                                ✅ Payroll amounts — Hidden in router
-                            </div>
+                    {state.activeLoans.filter((l: any) => Number(l.status) === 0).length > 0 ? (
+                        <div style={{ width: '100%', overflowX: 'auto', marginTop: 16 }}>
+                            <table className="data-table" style={{ width: '100%' }}>
+                                <thead>
+                                    <tr>
+                                        <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid var(--border-color)' }}>ID</th>
+                                        <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid var(--border-color)' }}>Principal</th>
+                                        <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid var(--border-color)' }}>Remaining</th>
+                                        <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid var(--border-color)' }}>Scheme</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {state.activeLoans
+                                        .filter((l: any) => Number(l.status) === 0)
+                                        .map((loan: any, idx: number) => {
+                                            const remaining = Number(ethers.formatEther(BigInt(loan.totalOwed) - BigInt(loan.totalRepaid))).toFixed(4);
+                                            return (
+                                                <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                                    <td style={{ padding: '12px 16px', fontWeight: 600 }}>#{Number(loan.id)}</td>
+                                                    <td style={{ padding: '12px 16px', fontFamily: 'var(--font-mono)' }}>
+                                                        {Number(ethers.formatEther(loan.principal)).toFixed(4)} MON
+                                                    </td>
+                                                    <td style={{ padding: '12px 16px', fontFamily: 'var(--font-mono)', color: 'var(--accent-amber)' }}>
+                                                        {remaining} MON
+                                                    </td>
+                                                    <td style={{ padding: '12px 16px', fontSize: '0.8rem' }}>
+                                                        {SCHEME_NAMES[Number(loan.scheme)]}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                </tbody>
+                            </table>
                         </div>
-                        <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 16, lineHeight: 1.6 }}>
-                            Your attestation proves you're eligible without revealing
-                            how much you earn, who you work for, or your borrowing history.
-                        </p>
-                    </div>
+                    ) : (
+                        <div className="empty-state" style={{ padding: '24px 0', width: '100%', minHeight: '120px' }}>
+                            <div className="emoji">🎉</div>
+                            <p style={{ margin: 0 }}>No outstanding loans.<br />You're debt-free!</p>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* Loans Table */}
+            {/* Transaction History — full width */}
+            <div className="card">
+                <h3 className="card-title" style={{ marginBottom: 16 }}>📜 Transaction History</h3>
+
+                {(() => {
+                    // Build a unified timeline from all loans
+                    const allLoans = state.allLoans || [];
+                    const events: { date: number; type: string; amount: string; rawAmount: number; detail: string; status: string; statusClass: string; balanceAfter?: string }[] = [];
+
+                    for (const loan of allLoans) {
+                        // Borrow event
+                        const principalNum = Number(ethers.formatEther(loan.principal));
+                        events.push({
+                            date: Number(loan.createdAt) * 1000,
+                            type: '💰 Loan Issued',
+                            amount: `+${principalNum.toFixed(4)} MON`,
+                            rawAmount: principalNum,
+                            detail: `${SCHEME_NAMES[Number(loan.scheme)]} · Total owed: ${Number(ethers.formatEther(loan.totalOwed)).toFixed(4)} MON`,
+                            status: STATUS_NAMES[Number(loan.status)],
+                            statusClass: STATUS_CLASSES[Number(loan.status)],
+                        });
+
+                        // Repayment event (if any repaid amount)
+                        const repaid = BigInt(loan.totalRepaid);
+                        if (repaid > 0n) {
+                            const isFullyRepaid = Number(loan.status) === 1;
+                            const repaidNum = Number(ethers.formatEther(repaid));
+                            events.push({
+                                date: Number(loan.createdAt) * 1000 + 1000, // slightly after for ordering
+                                type: isFullyRepaid ? '✅ Loan Repaid' : '🔄 Partial Repayment',
+                                amount: `-${repaidNum.toFixed(4)} MON`,
+                                rawAmount: -repaidNum,
+                                detail: isFullyRepaid
+                                    ? `Loan #${Number(loan.id)} fully settled via payroll`
+                                    : `${Number(ethers.formatEther(BigInt(loan.totalOwed) - repaid)).toFixed(4)} MON remaining`,
+                                status: isFullyRepaid ? 'Settled' : 'Partial',
+                                statusClass: isFullyRepaid ? 'status-repaid' : 'status-pending',
+                            });
+                        }
+                    }
+
+                    // Sort newest first
+                    events.sort((a, b) => b.date - a.date);
+
+                    // Calculate backward running balance
+                    let runningBalance = parseFloat(monBalance);
+                    for (const evt of events) {
+                        if (isNaN(runningBalance)) {
+                            evt.balanceAfter = '—';
+                        } else {
+                            evt.balanceAfter = `${runningBalance.toFixed(4)} MON`;
+                            runningBalance -= evt.rawAmount; // subtract backwards
+                        }
+                    }
+
+                    if (events.length === 0) {
+                        return (
+                            <div className="empty-state" style={{ padding: '32px 0' }}>
+                                <div className="emoji">📝</div>
+                                <p>No transactions yet. Borrow against your payroll to get started!</p>
+                            </div>
+                        );
+                    }
+
+                    return (
+                        <div style={{ overflowX: 'auto' }}>
+                            <table className="data-table" id="tx-history-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Type</th>
+                                        <th>Amount</th>
+                                        <th>Balance After</th>
+                                        <th>Details</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {events.map((evt, idx) => (
+                                        <tr key={idx}>
+                                            <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                                                {new Date(evt.date).toLocaleString('en-US', {
+                                                    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+                                                })}
+                                            </td>
+                                            <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{evt.type}</td>
+                                            <td style={{
+                                                fontFamily: 'var(--font-mono)',
+                                                fontWeight: 600,
+                                                color: evt.amount.startsWith('+') ? 'var(--accent-green)' : 'var(--accent-amber)',
+                                            }}>
+                                                {evt.amount}
+                                            </td>
+                                            <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
+                                                {evt.balanceAfter}
+                                            </td>
+                                            <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{evt.detail}</td>
+                                            <td>
+                                                <span className={`status-badge ${evt.statusClass}`}>{evt.status}</span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    );
+                })()}
+            </div>
+
+            {/* Loan History — all loans (active + repaid) */}
             <div className="card">
                 <div className="card-header">
-                    <h3 className="card-title">Loan History</h3>
+                    <h3 className="card-title">📋 Loan History</h3>
                     <button className="btn btn-secondary" onClick={refreshData} style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
                         🔄 Refresh
                     </button>
                 </div>
 
-                {state.activeLoans.length === 0 ? (
+                {(state.allLoans || []).length === 0 ? (
                     <div className="empty-state">
                         <div className="emoji">📝</div>
                         <p>No loans yet. Get started by borrowing against your payroll!</p>
@@ -226,34 +341,37 @@ export default function Dashboard({ state, refreshData }: Props) {
                                 </tr>
                             </thead>
                             <tbody>
-                                {state.activeLoans.map((loan: any, idx: number) => (
-                                    <tr key={idx}>
-                                        <td>#{Number(loan.id)}</td>
-                                        <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                            {new Date(Number(loan.createdAt) * 1000).toLocaleString('en-US', {
-                                                month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
-                                            })}
-                                        </td>
-                                        <td style={{ fontFamily: 'var(--font-mono)' }}>
-                                            {Number(ethers.formatEther(loan.principal)).toFixed(4)}
-                                        </td>
-                                        <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
-                                            {Number(ethers.formatEther(loan.interest)).toFixed(4)}
-                                        </td>
-                                        <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
-                                            {Number(ethers.formatEther(loan.totalOwed)).toFixed(4)}
-                                        </td>
-                                        <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-green)' }}>
-                                            {Number(ethers.formatEther(loan.totalRepaid)).toFixed(4)}
-                                        </td>
-                                        <td>{SCHEME_NAMES[Number(loan.scheme)]}</td>
-                                        <td>
-                                            <span className={`status-badge ${STATUS_CLASSES[Number(loan.status)]}`}>
-                                                {STATUS_NAMES[Number(loan.status)]}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {(state.allLoans || [])
+                                    .slice()
+                                    .sort((a: any, b: any) => Number(b.createdAt) - Number(a.createdAt))
+                                    .map((loan: any, idx: number) => (
+                                        <tr key={idx} style={Number(loan.status) === 1 ? { opacity: 0.65 } : {}}>
+                                            <td>#{Number(loan.id)}</td>
+                                            <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                {new Date(Number(loan.createdAt) * 1000).toLocaleString('en-US', {
+                                                    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+                                                })}
+                                            </td>
+                                            <td style={{ fontFamily: 'var(--font-mono)' }}>
+                                                {Number(ethers.formatEther(loan.principal)).toFixed(4)}
+                                            </td>
+                                            <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
+                                                {Number(ethers.formatEther(loan.interest)).toFixed(4)}
+                                            </td>
+                                            <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
+                                                {Number(ethers.formatEther(loan.totalOwed)).toFixed(4)}
+                                            </td>
+                                            <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-green)' }}>
+                                                {Number(ethers.formatEther(loan.totalRepaid)).toFixed(4)}
+                                            </td>
+                                            <td>{SCHEME_NAMES[Number(loan.scheme)]}</td>
+                                            <td>
+                                                <span className={`status-badge ${STATUS_CLASSES[Number(loan.status)]}`}>
+                                                    {STATUS_NAMES[Number(loan.status)]}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
                             </tbody>
                         </table>
                     </div>

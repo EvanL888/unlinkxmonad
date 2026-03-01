@@ -23,6 +23,7 @@ export interface AppState {
     hasAttestation: boolean;
     reputation: number;
     activeLoans: any[];
+    allLoans: any[];
     totalObligation: bigint;
     maxLoanAmount: bigint;
     totalLiquidity: bigint;
@@ -39,6 +40,7 @@ function App() {
         hasAttestation: false,
         reputation: 50,
         activeLoans: [],
+        allLoans: [],
         totalObligation: 0n,
         maxLoanAmount: 0n,
         totalLiquidity: 0n,
@@ -98,6 +100,7 @@ function App() {
                 state.provider
             );
             let activeLoans: any[] = [];
+            let allLoans: any[] = [];
             let totalObligation = 0n;
             let maxLoanAmount = 0n;
             let totalLiquidity = 0n;
@@ -107,14 +110,16 @@ function App() {
                 const storedLoans = localStorage.getItem(`ewa_confidential_loans_${state.address}`);
                 if (storedLoans) {
                     const parsed = JSON.parse(storedLoans);
-                    activeLoans = parsed.filter((l: any) => l.status === 0).map((l: any) => ({
+                    const mapLoan = (l: any) => ({
                         ...l,
                         principal: BigInt(l.principal || '0'),
                         interest: BigInt(l.interest || '0'),
                         totalOwed: BigInt(l.totalOwed || '0'),
                         totalRepaid: BigInt(l.totalRepaid || '0'),
                         collateral: BigInt(l.collateral || '0')
-                    }));
+                    });
+                    activeLoans = parsed.filter((l: any) => l.status === 0).map(mapLoan);
+                    allLoans = parsed.map(mapLoan);
 
                     for (const l of activeLoans) {
                         totalObligation += (BigInt(l.totalOwed) - BigInt(l.totalRepaid));
@@ -131,6 +136,7 @@ function App() {
                 hasAttestation,
                 reputation,
                 activeLoans,
+                allLoans,
                 totalObligation,
                 maxLoanAmount,
                 totalLiquidity,

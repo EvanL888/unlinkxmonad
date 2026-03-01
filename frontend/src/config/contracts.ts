@@ -5,10 +5,10 @@
 
 // After deploying, paste the addresses from deployed-addresses.json here
 export const CONTRACTS = {
-    attestationRegistry: '0x381dF22Bd6e74A02c3FF09788501F38071612766',
-    reputationTracker: '0x1cbCeCc57164c858969671F9caAdB975d68156f6',
-    ewaLending: '0xFB5a59E371C962995f9e2d5a2b7c67E566E096Dc',
-    payrollRouter: '0x264575B080948a4bcaaeee4d0a0157B6376B3a25',
+    attestationRegistry: '0xacf2369272154b9ef271AF5F010bcc8Ab5399212',
+    reputationTracker: '0xb33767bbf88e03a851B62105D3ff87E839e8cEAc',
+    ewaLending: '0x2d48488575E15859317135Ab042827769e01c53f',
+    payrollRouter: '0xEDBd62cd350c2A95D62743832554E3f16A5AE547',
 };
 
 export const MONAD_CHAIN_ID = 10143;
@@ -25,6 +25,7 @@ export const EWA_LENDING_ABI = [
 
 export const ATTESTATION_REGISTRY_ABI = [
     'function registerAttestation(bytes32 attestationHash, bytes32 employerHash, uint256 expiry, bytes signature) external',
+    'function registerEmployer(bytes32 _employerHash) external',
     'function isValid(address borrower) external view returns (bool)',
     'function attestations(address) external view returns (bytes32 attestationHash, bytes32 employerHash, uint256 issuedAt, uint256 expiresAt, bool revoked)',
 ];
@@ -34,8 +35,14 @@ export const REPUTATION_TRACKER_ABI = [
 ];
 
 export const PAYROLL_ROUTER_ABI = [
+    'function registerEmployee(address _employee, address _lendingContract) external',
+    'function depositPayroll(address _employee, uint256 _deductionAmount, bytes32 _nullifier, bytes calldata _proof) external payable',
+    'function setNextPayday(address _employee, uint256 _timestamp) external',
     'function getNextPayday(address employee) external view returns (uint256)',
     'function isRegistered(address employee) external view returns (bool)',
+    'function getLastPayrollReceived(address employee) external view returns (uint256)',
+    'function owner() external view returns (address)',
+    'event EmployeeRegistered(address indexed employee, address lendingContract)',
     'event PayrollProcessed(address indexed employee, uint256 totalDeposit, uint256 deducted, uint256 forwarded)',
 ];
 
