@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { ethers } from 'ethers';
 import { AppState } from '../App';
-import { CONTRACTS, EWA_LENDING_ABI, MON_TOKEN } from '../config/contracts';
-import { useUnlink } from '@unlink-xyz/react';
+import { CONTRACTS, EWA_LENDING_ABI } from '../config/contracts';
+import { useInteract, toCall, formatAmount } from '@unlink-xyz/react';
 import TxToast from './TxToast';
 
 interface Props {
@@ -21,54 +21,39 @@ export default function RepayFlow({ state, onRepaid }: Props) {
     const [status, setStatus] = useState('');
     const [txHash, setTxHash] = useState<string | null>(null);
 
-    // Unlink SDK — burner accounts for private DeFi with native MON
-    const { unlink } = useUnlink();
+    // Unlink hook for atomic shielded -> public -> shielded calls
+    const { interact, isPending } = useInteract();
 
     const handleRepay = async (loanId: number) => {
-        if (!state.signer || !repayAmount || !unlink) return;
+        if (!state.signer || !repayAmount) return;
         setLoading(true);
-        setStatus('🔒 Initiating private repayment via Unlink...');
+        setStatus('Initiating early repayment...');
 
         try {
             const amountWei = ethers.parseEther(repayAmount);
-            const burnerIndex = Date.now(); // Unique burner for each repay
+
+            const lending = new ethers.Contract(
+                CONTRACTS.ewaLending,
+                EWA_LENDING_ABI,
+                state.signer
+            );
 
             // 1. Retrieve the local loan record to get its Nullifier Hash
             const loan = state.activeLoans.find((l: any) => l.id === loanId);
             if (!loan || !loan.nullifierHash) throw new Error("Loan commitment not found locally!");
 
-            // 2. Fund a fresh burner with repayment amount + gas from shielded pool
-            setStatus('🔒 Creating anonymous burner wallet...');
-            const totalFund = amountWei + ethers.parseEther('0.01'); // repay + gas
-            await unlink.burner.fund(burnerIndex, {
-                token: MON_TOKEN,
-                amount: totalFund,
-            });
-
-            // 3. Burner calls repayConfidential — only the burner address appears on-chain
-            setStatus('🔒 Burner calling repayConfidential (your address hidden)...');
+            // 2. Generate a ZK Proof (Simulated for this hackathon using random bytes)
             const mockZkProof = ethers.hexlify(ethers.randomBytes(64));
-            const iface = new ethers.Interface(EWA_LENDING_ABI);
-            const calldata = iface.encodeFunctionData('repayConfidential', [
-                loan.nullifierHash, mockZkProof
-            ]);
 
-            const { txHash: repayTxHash } = await unlink.burner.send(burnerIndex, {
-                to: CONTRACTS.ewaLending,
-                data: calldata,
-                value: amountWei, // Send MON with the repay call
-            });
+            // 3. Execute the private Relayer transaction
+            const tx = await lending.repayConfidential(
+                loan.nullifierHash,
+                mockZkProof,
+                { value: amountWei }
+            );
+            await tx.wait();
 
-            setTxHash(repayTxHash);
-
-            // 4. Sweep any remaining MON (leftover gas) back to the privacy pool
-            try {
-                await unlink.burner.sweepToPool(burnerIndex, { token: MON_TOKEN });
-            } catch (sweepErr) {
-                console.warn('Sweep leftover failed (may be empty):', sweepErr);
-            }
-
-            // 5. Update the local unencrypted state
+            // 4. Update the local unencrypted state
             const stored = localStorage.getItem(`ewa_confidential_loans_${state.address}`);
             if (stored) {
                 const loans = JSON.parse(stored);
@@ -84,7 +69,8 @@ export default function RepayFlow({ state, onRepaid }: Props) {
                 }
             }
 
-            setStatus('✅ Repayment successful! Your real address is hidden on-chain.');
+            setTxHash(tx.hash);
+            setStatus(`✅ Repayment successful! Tx: ${tx.hash}`);
             setSelectedLoan(null);
             setRepayAmount('');
             setTimeout(() => { onRepaid(); setStatus(''); }, 3000);

@@ -62,22 +62,21 @@ contract EWALending {
     // ─── Confidential Borrowing ──────────────────────────────────────────
 
     /**
-     * @notice Borrow MON confidentially via the Unlink Adapter.
-     * @param _amount           Amount to borrow
+     * @notice Borrow MON confidentially.
+     * @param _amount           Amount to borrow (publicly visible for pool matching, but can be obscured in advanced ZK)
      * @param _commitmentHash   A hash of the secret loan metadata (salt, principal, borrower)
      * @param _encryptedData    Auditor view key encrypted payload `{borrower, principal, date}`
-     * @param _borrower         Original borrower address (for attestation check)
-     * @param _recipient        Where to send MON (Unlink Adapter address for reshielding, or borrower for direct)
      */
     function borrowConfidential(
         uint256 _amount,
         bytes32 _commitmentHash,
-        bytes calldata _encryptedData,
-        address _borrower,
-        address _recipient
+        bytes calldata _encryptedData
     ) external {
-        // Verify the original borrower has a valid attestation
-        require(attestationRegistry.isValid(_borrower), "No valid attestation");
+        // Attestation check remains public, but in a true ZK system this would be a proof
+        require(
+            attestationRegistry.isValid(msg.sender),
+            "No valid attestation"
+        );
         require(_amount > 0 && _amount <= maxLoanAmount, "Invalid loan amount");
         require(totalLiquidity >= _amount, "Insufficient liquidity");
         require(!activeCommitments[_commitmentHash], "Commitment exists");
@@ -85,9 +84,9 @@ contract EWALending {
         activeCommitments[_commitmentHash] = true;
         totalLiquidity -= _amount;
 
-        // Send MON to the Unlink Adapter (or directly to borrower as fallback)
-        // The Adapter will reshield the MON into the user's private balance
-        (bool success, ) = payable(_recipient).call{value: _amount}("");
+        // In true Unlink integration, this _amount is deposited into the Unlink Privacy Pool
+        // For hackathon bridging, we transfer to the user, simulating the Relayer action.
+        (bool success, ) = payable(msg.sender).call{value: _amount}("");
         require(success, "Transfer failed");
 
         emit ConfidentialLoanCreated(_commitmentHash, _encryptedData);

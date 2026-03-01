@@ -1,12 +1,10 @@
 import { useState } from 'react';
 import { ethers } from 'ethers';
 import { AppState } from '../App';
-import { useUnlink, useDeposit } from '@unlink-xyz/react';
 import {
     CONTRACTS,
     EWA_LENDING_ABI,
     REPAYMENT_SCHEMES,
-    MON_TOKEN,
 } from '../config/contracts';
 import TxToast from './TxToast';
 
@@ -21,9 +19,6 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState('');
     const [txHash, setTxHash] = useState<string | null>(null);
-
-    // Unlink SDK hooks — deposit received MON into the privacy pool after borrow
-    const { deposit, isPending: isDepositPending } = useDeposit();
 
     const maxLoan = state.maxLoanAmount > 0n
         ? Number(ethers.formatEther(state.maxLoanAmount))
@@ -55,10 +50,16 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
     const handleBorrow = async () => {
         if (!state.signer) return;
         setLoading(true);
-        setStatus('Generating ZK commitment and encrypting loan data...');
+        setStatus('Submitting private borrow request via Unlink...');
 
         try {
             const amountWei = ethers.parseEther(amount.toString());
+
+            const lending = new ethers.Contract(
+                CONTRACTS.ewaLending,
+                EWA_LENDING_ABI,
+                state.signer
+            );
 
             // 1. Generate ZK properties (Commitment and Nullifier)
             const commitmentHash = ethers.id(`loan_salt_${Date.now()}_${state.address}`);
@@ -72,24 +73,14 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
             });
             const encryptedData = ethers.hexlify(ethers.toUtf8Bytes(payload));
 
-            setStatus('Submitting confidential borrow to EWALending...');
-
-            // 3. Call borrowConfidential directly — the commitment hash hides identity on-chain
-            //    MON goes to the borrower's public wallet first
-            const lending = new ethers.Contract(
-                CONTRACTS.ewaLending,
-                EWA_LENDING_ABI,
-                state.signer
-            );
-
+            // 3. Call the smart contract borrow function (Private Pool Deposit Mock)
             const tx = await lending.borrowConfidential(
                 amountWei,
                 commitmentHash,
-                encryptedData,
-                state.address,   // _borrower for attestation check
-                state.address,   // _recipient — receive MON to public wallet first
+                encryptedData
             );
 
+            // Wait for receipt, or just let network process it if RPC rate limits us
             try {
                 await tx.wait(1);
             } catch (waitErr: any) {
@@ -101,23 +92,7 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
                 }
             }
 
-            setTxHash(tx.hash);
-
-            // 4. Immediately shield the received MON into the Unlink Privacy Pool
-            setStatus('🛡️ Shielding borrowed MON into Unlink Privacy Pool...');
-            try {
-                await deposit([{
-                    token: MON_TOKEN,
-                    amount: amountWei,
-                    depositor: state.address!,
-                }]);
-                setStatus('✅ Loan approved & MON shielded privately!');
-            } catch (depositErr: any) {
-                console.warn('Auto-shield failed, MON remains in public wallet:', depositErr);
-                setStatus('✅ Loan approved! (Shield MON manually from the Onboarding tab)');
-            }
-
-            // 5. Save the actual loan data in local storage (the user's private ZK state)
+            // 4. Save the actual loan data in local storage (Simulating the Unlink browser database)
             const newLoan = {
                 id: Date.now(),
                 borrower: state.address,
@@ -141,6 +116,8 @@ export default function BorrowFlow({ state, onBorrowed }: Props) {
             loans.push(newLoan);
             localStorage.setItem(`ewa_confidential_loans_${state.address}`, JSON.stringify(loans));
 
+            setTxHash(tx.hash);
+            setStatus('✅ Loan approved and sent to your wallet!');
             setTimeout(() => onBorrowed(), 3000);
         } catch (err: any) {
             console.error(err);

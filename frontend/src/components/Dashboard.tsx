@@ -1,7 +1,6 @@
 import { ethers } from 'ethers';
 import { AppState } from '../App';
 import { useUnlinkBalances } from '@unlink-xyz/react';
-import { MON_TOKEN } from '../config/contracts';
 
 interface Props {
     state: AppState;
@@ -103,18 +102,6 @@ export default function Dashboard({ state, refreshData }: Props) {
                         {state.totalLiquidity > 0n
                             ? Number(ethers.formatEther(state.totalLiquidity)).toFixed(2)
                             : '0'} MON
-                    </div>
-                </div>
-
-                <div className="stat-card" style={{ background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.15))' }}>
-                    <div className="stat-label">🔒 Shielded Balance</div>
-                    <div className="stat-value gradient">
-                        {unlinkReady && balances?.[MON_TOKEN]
-                            ? Number(ethers.formatEther(BigInt(balances[MON_TOKEN]))).toFixed(4)
-                            : '0'} MON
-                    </div>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                        Private via Unlink Pool
                     </div>
                 </div>
             </div>

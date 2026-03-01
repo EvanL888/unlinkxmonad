@@ -5,21 +5,17 @@
 
 // After deploying, paste the addresses from deployed-addresses.json here
 export const CONTRACTS = {
-    attestationRegistry: '0xC4E40134639D5De36E980FB00ADA7762E333a4F1',
-    reputationTracker: '0xCB1Bc4ABA062eb10eC6c4Ca0205A6c4d3bc0399F',
-    ewaLending: '0x4df67c35290CDFa93538c24d86F34b339607fA92',
-    payrollRouter: '0x36B498340389081b8747B93D407F852770932051',
+    attestationRegistry: '0x381dF22Bd6e74A02c3FF09788501F38071612766',
+    reputationTracker: '0x1cbCeCc57164c858969671F9caAdB975d68156f6',
+    ewaLending: '0xFB5a59E371C962995f9e2d5a2b7c67E566E096Dc',
+    payrollRouter: '0x264575B080948a4bcaaeee4d0a0157B6376B3a25',
 };
 
 export const MONAD_CHAIN_ID = 10143;
 export const MONAD_RPC = 'https://testnet-rpc.monad.xyz';
 
-// Unlink Privacy Pool constants
-export const UNLINK_POOL_ADDRESS = '0x0813da0a10328e5ed617d37e514ac2f6fa49a254';
-export const MON_TOKEN = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
-
 export const EWA_LENDING_ABI = [
-    'function borrowConfidential(uint256 _amount, bytes32 _commitmentHash, bytes calldata _encryptedData, address _borrower, address _recipient) external',
+    'function borrowConfidential(uint256 _amount, bytes32 _commitmentHash, bytes calldata _encryptedData) external',
     'function repayConfidential(bytes32 _nullifierHash, bytes calldata _proof) external payable',
     'function maxLoanAmount() external view returns (uint256)',
     'function totalLiquidity() external view returns (uint256)',

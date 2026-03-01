@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { ethers } from 'ethers';
 import { AppState } from '../App';
-import { useUnlink, useDeposit } from '@unlink-xyz/react';
+import { useUnlink } from '@unlink-xyz/react';
 import {
     CONTRACTS,
     ATTESTATION_REGISTRY_ABI,
     MONAD_CHAIN_ID,
-    MON_TOKEN,
 } from '../config/contracts';
 import TxToast from './TxToast';
 
@@ -17,49 +16,21 @@ interface Props {
 }
 
 export default function OnboardingFlow({ state, connectWallet, onComplete }: Props) {
-    const { createWallet, createAccount, walletExists, activeAccount, balances, deposit: unlinkDeposit } = useUnlink();
-    const { deposit, isPending: isDepositPending } = useDeposit();
-    const [step, setStep] = useState(state.connected ? (walletExists && activeAccount ? 3 : 2) : 1);
+    const { createWallet, walletExists } = useUnlink();
+    const [step, setStep] = useState(state.connected ? (walletExists ? 3 : 2) : 1);
     const [loading, setLoading] = useState(false);
     const [attestationStatus, setAttestationStatus] = useState('');
     const [txHash, setTxHash] = useState<string | null>(null);
-    const [depositAmount, setDepositAmount] = useState('0.05');
-    const [depositStatus, setDepositStatus] = useState('');
 
     const handleCreateUnlinkWallet = async () => {
         try {
             setLoading(true);
-            if (!walletExists) {
-                await createWallet();
-            }
-            if (!activeAccount) {
-                await createAccount();
-            }
+            await createWallet();
             setStep(3);
         } catch (err) {
             console.error('Failed to create unlink wallet', err);
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleDeposit = async () => {
-        if (!state.address) return;
-        try {
-            setDepositStatus('Shielding MON into Unlink Privacy Pool...');
-            const amountWei = ethers.parseEther(depositAmount);
-
-            // Use the Unlink SDK deposit hook
-            await deposit([{
-                token: MON_TOKEN,
-                amount: amountWei,
-                depositor: state.address,
-            }]);
-
-            setDepositStatus('✅ MON successfully shielded! Your balance is now private.');
-        } catch (err: any) {
-            console.error('Deposit failed:', err);
-            setDepositStatus('❌ ' + (err.message || err.toString()));
         }
     };
 
@@ -87,7 +58,7 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
 
     const handleConnect = async () => {
         await connectWallet();
-        setStep(walletExists && activeAccount ? 3 : 2);
+        setStep(walletExists ? 3 : 2);
     };
 
     const handleSubmitAttestation = async () => {
@@ -218,58 +189,18 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
                         <div className="card-header">
                             <div>
                                 <h2 className="card-title">Enable Privacy (Unlink)</h2>
-                                <p className="card-subtitle">Create a private Unlink wallet and shield your MON for confidential transactions.</p>
+                                <p className="card-subtitle">Create a private Unlink wallet so zero-knowledge proofs can hide your loan balances.</p>
                             </div>
                         </div>
 
-                        {walletExists && activeAccount ? (
+                        {walletExists ? (
                             <>
-                                <div className="alert alert-success" style={{ marginBottom: 16 }}>
-                                    ✅ Private wallet active!
+                                <div className="alert alert-success" style={{ marginBottom: 24 }}>
+                                    ✅ Private wallet found and loaded!
                                 </div>
-
-                                {/* Deposit section */}
-                                <div className="preview-box" style={{ marginBottom: 16 }}>
-                                    <div className="preview-row">
-                                        <span className="label">Shielded Balance</span>
-                                        <span className="value highlight">
-                                            {balances?.[MON_TOKEN] ? ethers.formatEther(BigInt(balances[MON_TOKEN])) : '0'} MON
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div style={{ marginBottom: 16 }}>
-                                    <label className="form-label">Deposit MON into Privacy Pool</label>
-                                    <div style={{ display: 'flex', gap: 8 }}>
-                                        <input
-                                            type="number"
-                                            className="form-input"
-                                            value={depositAmount}
-                                            onChange={e => setDepositAmount(e.target.value)}
-                                            step="0.01"
-                                            min="0.01"
-                                            style={{ flex: 1 }}
-                                        />
-                                        <button
-                                            className="btn btn-primary"
-                                            onClick={handleDeposit}
-                                            disabled={isDepositPending}
-                                        >
-                                            {isDepositPending ? 'Shielding...' : '🛡️ Shield MON'}
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {depositStatus && (
-                                    <div className={`alert ${depositStatus.includes('✅') ? 'alert-success' : depositStatus.includes('❌') ? 'alert-warning' : 'alert-info'}`}>
-                                        {depositStatus}
-                                    </div>
-                                )}
-
                                 <button
                                     className="btn btn-primary btn-lg btn-full"
                                     onClick={() => setStep(3)}
-                                    style={{ marginTop: 12 }}
                                 >
                                     Continue →
                                 </button>
@@ -277,8 +208,7 @@ export default function OnboardingFlow({ state, connectWallet, onComplete }: Pro
                         ) : (
                             <>
                                 <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: '0.9rem', lineHeight: 1.7 }}>
-                                    Click below to generate a new shielded wallet. This creates a private key locally on your device
-                                    that Unlink uses to encrypt and decrypt your transaction data.
+                                    Click below to generate a new shielded wallet that is tied only to this device.
                                 </p>
                                 <button
                                     id="create-unlink-wallet-btn"

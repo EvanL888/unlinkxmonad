@@ -56,7 +56,7 @@ export interface EWALendingInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "borrowConfidential",
-    values: [BigNumberish, BytesLike, BytesLike, AddressLike, AddressLike]
+    values: [BigNumberish, BytesLike, BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "depositLiquidity",
@@ -223,9 +223,7 @@ export interface EWALending extends BaseContract {
     [
       _amount: BigNumberish,
       _commitmentHash: BytesLike,
-      _encryptedData: BytesLike,
-      _borrower: AddressLike,
-      _recipient: AddressLike
+      _encryptedData: BytesLike
     ],
     [void],
     "nonpayable"
@@ -271,9 +269,7 @@ export interface EWALending extends BaseContract {
     [
       _amount: BigNumberish,
       _commitmentHash: BytesLike,
-      _encryptedData: BytesLike,
-      _borrower: AddressLike,
-      _recipient: AddressLike
+      _encryptedData: BytesLike
     ],
     [void],
     "nonpayable"
