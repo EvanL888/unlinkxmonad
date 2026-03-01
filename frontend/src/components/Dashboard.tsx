@@ -343,9 +343,28 @@ export default function Dashboard({ state, refreshData }: Props) {
             <div className="card">
                 <div className="card-header">
                     <h3 className="card-title">Loan History</h3>
-                    <button className="btn btn-secondary" onClick={refreshData} style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
-                        Refresh
-                    </button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                            className="btn btn-secondary"
+                            onClick={() => {
+                                if (window.confirm("This will clear your local mock loan history (useful if the smart contract was redeployed). Continue?")) {
+                                    localStorage.removeItem(`ewa_confidential_loans_${state.address}`);
+                                    localStorage.removeItem(`ewa_payroll_events_${state.address}`);
+                                    localStorage.removeItem(`ewa_payroll_deductions_${state.address}`);
+                                    localStorage.removeItem(`ewa_payroll_sync_${state.address}`);
+                                    localStorage.removeItem(`ewa_payroll_last_block_${state.address}`);
+                                    window.location.reload();
+                                }
+                            }}
+                            style={{ padding: '8px 16px', fontSize: '0.8rem', color: 'var(--accent-red)' }}
+                            title="Clear mock data if smart contract was reset"
+                        >
+                            Reset Sync
+                        </button>
+                        <button className="btn btn-secondary" onClick={refreshData} style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
+                            Refresh
+                        </button>
+                    </div>
                 </div>
 
                 {(state.allLoans || []).length === 0 ? (
